@@ -1,4 +1,5 @@
-import { Diagram } from './model';
+import { Attribute, Diagram, Entity } from './model';
+import { generateLogical } from './logical-schema';
 import { addAttribute, addEntity, addRelationship, createDiagram, updateParticipant } from './commands';
 import { parseDiagramFile, serializeDiagram } from './serialize';
 
@@ -160,5 +161,84 @@ describe('parseDiagramFile con schema logico', () => {
     const l = logical();
     l.tables[1].id = 't1';
     expect(parseDiagramFile(serializeDiagram({ ...sample(), logical: l })).ok).toBe(false);
+  });
+
+  it('rifiuta id di FK duplicati nella stessa tabella', () => {
+    const l = logical();
+    l.tables[1].foreignKeys.push({ ...l.tables[1].foreignKeys[0] });
+    expect(parseDiagramFile(serializeDiagram({ ...sample(), logical: l })).ok).toBe(false);
+  });
+
+  it('rifiuta id di FK duplicati tra tabelle diverse', () => {
+    const l = logical();
+    l.tables[0].foreignKeys.push({ id: 'f1', columnIds: ['c1'], refTableId: 't1', refColumnIds: ['c1'] });
+    expect(parseDiagramFile(serializeDiagram({ ...sample(), logical: l })).ok).toBe(false);
+  });
+
+  it('rifiuta un id di FK uguale a quello di una tabella', () => {
+    const l = logical();
+    l.tables[1].foreignKeys[0].id = 't1';
+    expect(parseDiagramFile(serializeDiagram({ ...sample(), logical: l })).ok).toBe(false);
+  });
+
+  it('rifiuta una colonna ripetuta nella PK', () => {
+    const l = logical();
+    l.tables[0].primaryKey = ['c1', 'c1'];
+    expect(parseDiagramFile(serializeDiagram({ ...sample(), logical: l })).ok).toBe(false);
+  });
+
+  it('rifiuta una colonna ripetuta in una UNIQUE', () => {
+    const l = logical();
+    l.tables[1].uniques = [['c3', 'c3']];
+    expect(parseDiagramFile(serializeDiagram({ ...sample(), logical: l })).ok).toBe(false);
+  });
+
+  it('rifiuta una colonna ripetuta tra le colonne di una FK', () => {
+    const l = logical();
+    l.tables[1].foreignKeys[0] = { id: 'f1', columnIds: ['c3', 'c3'], refTableId: 't2', refColumnIds: ['c2', 'c3'] };
+    expect(parseDiagramFile(serializeDiagram({ ...sample(), logical: l })).ok).toBe(false);
+  });
+
+  it('rifiuta una colonna ripetuta tra le colonne riferite da una FK', () => {
+    const l = logical();
+    l.tables[1].foreignKeys[0] = { id: 'f1', columnIds: ['c2', 'c3'], refTableId: 't2', refColumnIds: ['c2', 'c2'] };
+    expect(parseDiagramFile(serializeDiagram({ ...sample(), logical: l })).ok).toBe(false);
+  });
+});
+
+describe('schema logico generato da un ER ai limiti', () => {
+  const long = (prefix: string, i: number) => `${prefix}${String(i).padStart(4, '0')}`.padEnd(80, 'x');
+
+  /** Entita' con 200 attributi da 80 caratteri: la chiave, 99 composti da 20 parti, 100 multivalore. */
+  function entity(k: number): Entity {
+    const pkName = long(`K${k}_`, 0);
+    const attributes: Attribute[] = [{ id: `e${k}a0`, name: pkName, card: '1,1', angle: 0 }];
+    for (let i = 1; i < 100; i++) {
+      attributes.push({
+        id: `e${k}a${i}`, name: long(`C${k}_`, i), card: '1,1', angle: 0,
+        // la prima parte si chiama come la chiave: diventa «<attributo>_<parte>», 161 caratteri
+        parts: Array.from({ length: 20 }, (_, j) => ({ id: `e${k}a${i}p${j}`, name: j === 0 ? pkName : `p${j}`, card: '1,1' as const })),
+      });
+    }
+    for (let i = 100; i < 200; i++) attributes.push({ id: `e${k}a${i}`, name: long(`M${k}_`, i), card: '0,N', angle: 0 });
+    return {
+      id: `e${k}`, name: long(`Entita${k}_`, k), pos: { x: 0, y: 0 }, attributes,
+      primary: { attributeIds: [`e${k}a0`], externalVia: [] }, alternates: [],
+    };
+  }
+
+  it('resta un file valido dopo serializzazione e rilettura', () => {
+    const d: Diagram = {
+      version: 1, id: 'big', title: 'Limiti', relationships: [], generalizations: [],
+      entities: [0, 1, 2, 3].map(entity),
+    };
+    expect(parseDiagramFile(serializeDiagram(d)).ok).toBe(true);
+    const logical = generateLogical(d);
+    expect(logical.tables.length).toBeGreaterThan(300);
+    expect(Math.max(...logical.tables.map((t) => t.columns.length))).toBeGreaterThan(100);
+    expect(Math.max(...logical.tables.flatMap((t) => [t.name.length, ...t.columns.map((c) => c.name.length)]))).toBeGreaterThan(160);
+    const r = parseDiagramFile(serializeDiagram({ ...d, logical }));
+    if (!r.ok) throw new Error(r.error);
+    expect(r.diagram.logical!.tables).toHaveLength(logical.tables.length);
   });
 });

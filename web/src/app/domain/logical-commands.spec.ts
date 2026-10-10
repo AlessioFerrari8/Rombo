@@ -5,7 +5,7 @@ import {
   moveColumn, moveTables, removeUnique, renameTable, replaceLogical, setForeignKeyColumns, setTablePositions,
   toggleUnique, togglePrimaryKey, updateColumn,
 } from './logical-commands';
-import { parseDiagramFile, serializeDiagram } from './serialize';
+import { LOGICAL_COLUMNS_MAX, LOGICAL_FKS_MAX, LOGICAL_TABLES_MAX, parseDiagramFile, serializeDiagram } from './serialize';
 import { tableById } from './model';
 
 const valid = (d: Parameters<typeof serializeDiagram>[0]) => parseDiagramFile(serializeDiagram(d)).ok;
@@ -149,5 +149,44 @@ describe('comandi dello schema logico', () => {
     const u = updateColumn(d, ordine, oCliente, { type: lungo });
     expect(tableById(u, ordine)!.columns[1].type).toHaveLength(20);
     expect(valid(u)).toBe(true);
+  });
+
+  it('eliminare una colonna di una UNIQUE composta toglie tutta la UNIQUE', () => {
+    const { d, ordine, oId, oCliente } = buildNegozio();
+    const extra = addColumn(d, ordine, 'nota', 'TEXT');
+    let x = extra.diagram;
+    x = { ...x, logical: { tables: x.logical!.tables.map((t) => (t.id === ordine ? { ...t, uniques: [[oId, oCliente], [extra.id]] } : t)) } };
+    const y = deleteColumn(x, ordine, oCliente);
+    expect(tableById(y, ordine)!.uniques).toEqual([[extra.id]]);
+    expect(valid(y)).toBe(true);
+  });
+
+  it('addTable oltre il limite dello schema non fa niente', () => {
+    const { d } = buildNegozio();
+    const t0 = d.logical!.tables[0];
+    const tables = Array.from({ length: LOGICAL_TABLES_MAX }, (_, i) => ({ ...t0, id: `t${i}`, name: `T${i}` }));
+    const full = { ...d, logical: { tables } };
+    const r = addTable(full, { x: 0, y: 0 });
+    expect(r.id).toBe('');
+    expect(r.diagram).toBe(full);
+  });
+
+  it('addColumn oltre il limite dello schema non fa niente', () => {
+    const { d, cliente } = buildNegozio();
+    const columns = Array.from({ length: LOGICAL_COLUMNS_MAX }, (_, i) => ({ id: `c${i}`, name: `c${i}`, type: 'INT', nullable: true }));
+    const full = { ...d, logical: { tables: d.logical!.tables.map((t) => (t.id === cliente ? { ...t, columns, primaryKey: ['c0'] } : t)) } };
+    const r = addColumn(full, cliente);
+    expect(r.id).toBe('');
+    expect(r.diagram).toBe(full);
+  });
+
+  it('addForeignKey oltre il limite dello schema non fa niente', () => {
+    const { d, ordine, oCliente, cliente } = buildNegozio();
+    const t = tableById(d, ordine)!;
+    const fks = Array.from({ length: LOGICAL_FKS_MAX }, (_, i) => ({ ...t.foreignKeys[0], id: `f${i}` }));
+    const full = { ...d, logical: { tables: d.logical!.tables.map((x) => (x.id === ordine ? { ...x, foreignKeys: fks } : x)) } };
+    const r = addForeignKey(full, ordine, [oCliente], cliente);
+    expect(r.id).toBe('');
+    expect(r.diagram).toBe(full);
   });
 });

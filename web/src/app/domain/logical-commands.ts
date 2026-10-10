@@ -1,6 +1,7 @@
 import { Created, edit } from './commands';
 import { newId } from './ids';
 import { DEFAULT_SQL_TYPE, Diagram, Id, LColumn, LTable, LogicalDiagram, Point, tableById } from './model';
+import { LOGICAL_COLUMNS_MAX, LOGICAL_FKS_MAX, LOGICAL_TABLES_MAX } from './serialize';
 
 const MAX_NAME = 80;
 const MAX_TYPE = 20;
@@ -26,6 +27,7 @@ function uniqueIdent(taken: Iterable<string>, base: string): string {
 const sameSet = (a: Id[], b: Id[]) => a.length === b.length && a.every((x, i) => x === b[i]);
 
 export function addTable(d: Diagram, pos: Point, name?: string): Created {
+  if ((d.logical?.tables.length ?? 0) >= LOGICAL_TABLES_MAX) return { diagram: d, id: '' };
   const id = newId();
   const diagram = edit(d, (x) => {
     const tables = tablesOf(x);
@@ -67,7 +69,8 @@ export function deleteTables(d: Diagram, ids: Iterable<Id>): Diagram {
 }
 
 export function addColumn(d: Diagram, tableId: Id, name?: string, type: string = DEFAULT_SQL_TYPE): Created {
-  if (!tableById(d, tableId)) return { diagram: d, id: '' };
+  const t0 = tableById(d, tableId);
+  if (!t0 || t0.columns.length >= LOGICAL_COLUMNS_MAX) return { diagram: d, id: '' };
   const id = newId();
   const diagram = edit(d, (x) => {
     const t = table(x, tableId)!;
@@ -108,7 +111,8 @@ export function deleteColumn(d: Diagram, tableId: Id, colId: Id): Diagram {
     if (!t) return;
     t.columns = t.columns.filter((c) => c.id !== colId);
     t.primaryKey = t.primaryKey.filter((c) => c !== colId);
-    t.uniques = t.uniques.map((u) => u.filter((c) => c !== colId)).filter((u) => u.length);
+    // una UNIQUE composta senza una delle sue colonne garantirebbe un vincolo diverso: si toglie tutta
+    t.uniques = t.uniques.filter((u) => !u.includes(colId));
     t.checks = t.checks.filter((ch) => ch.columnId !== colId);
     t.foreignKeys = t.foreignKeys.filter((f) => !f.columnIds.includes(colId));
     for (const other of x.logical!.tables) {
@@ -160,6 +164,7 @@ export function checkForeignKey(d: Diagram, tableId: Id, columnIds: Id[], refTab
 
 export function addForeignKey(d: Diagram, tableId: Id, columnIds: Id[], refTableId: Id): Created {
   if (checkForeignKey(d, tableId, columnIds, refTableId)) return { diagram: d, id: '' };
+  if (tableById(d, tableId)!.foreignKeys.length >= LOGICAL_FKS_MAX) return { diagram: d, id: '' };
   const id = newId();
   const diagram = edit(d, (x) => {
     const r = table(x, refTableId)!;
