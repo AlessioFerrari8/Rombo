@@ -1,0 +1,43 @@
+appId: it.alessio.rombo
+productName: Rombo
+copyright: Copyright © 2026 Alessio Ferrari
+directories:
+  output: release
+  buildResources: build
+files:
+  - electron/**
+  - web/dist/frontend/browser/**
+  - package.json
+asar: true
+artifactName: ${productName}-${version}-${os}-${arch}.${ext}
+
+win:
+  icon: build/icon.png
+  target:
+    - { target: nsis, arch: [x64] }
+    - { target: msi, arch: [x64] }
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+msi:
+  oneClick: false
+  perMachine: false
+
+linux:
+  icon: build/icon.png
+  category: Development
+  synopsis: Editor di diagrammi entità-relazione
+  description: Editor di diagrammi entità-relazione in notazione Chen, con validazione, schema logico e SQL. Funziona offline.
+  maintainer: Alessio Ferrari <alessio.ferrari@marconirovereto.it>
+  target:
+    - { target: AppImage, arch: [x64] }
+    - { target: deb, arch: [x64] }
+
+mac:
+  icon: build/icon.png
+  category: public.app-category.developer-tools
+  target:
+    - { target: dmg, arch: [x64, arm64] }
+dmg:
+  title: Rombo ${version}

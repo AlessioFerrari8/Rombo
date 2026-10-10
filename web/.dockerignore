@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.angular/
+e2e/
+test-results/
+playwright-report/

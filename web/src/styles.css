@@ -1,0 +1,897 @@
+/*
+ * Rombo — design system (Tailwind v4, niente daisyUI)
+ * ---------------------------------------------------------------------------
+ * Identita': un quaderno a quadretti. Carta bianca con quadretti azzurri,
+ * inchiostro blu da penna, matita rossa per gli errori, evidenziatore giallo
+ * per le associazioni. Di sera la lavagna: ardesia, gesso bianco, gesso
+ * colorato. Comfortaa per marchio, titoli e nomi nel diagramma; Nunito per
+ * l'interfaccia; JetBrains Mono per schema logico e SQL.
+ *
+ * Temi: [data-theme="quaderno"] (chiaro) e [data-theme="lavagna"] (scuro),
+ * scelti da ThemeService (salvato, altrimenti prefers-color-scheme).
+ * I token sono variabili CSS per tema; @theme inline li espone a Tailwind
+ * (bg-paper, text-ink, border-line, ...).
+ *
+ * Classi riusabili (@layer components):
+ *   Pagina      ui-page · ui-brand · ui-brand-name · ui-link · ui-divider
+ *   Bottoni     ui-btn · ui-btn-primary · ui-btn-ghost · ui-btn-danger · ui-btn-danger-solid
+ *               ui-btn-danger-ghost · ui-btn-sm · ui-btn-xs · ui-btn-icon · ui-btn-group
+ *               is-active · is-disabled
+ *   Campi       ui-input · ui-input-sm · ui-input-title · ui-select · ui-select-sm
+ *               ui-checkbox · ui-checkbox-sm · ui-radio · ui-choice · ui-fieldset · ui-legend
+ *               ui-floating · ui-hint
+ *   Navigazione ui-tabs · ui-tab · ui-segmented · ui-segment · is-active
+ *   Stato       ui-badge · ui-badge-error · ui-badge-warning · ui-badge-accent
+ *               ui-callout · ui-callout-info · ui-callout-warning · ui-callout-error
+ *               ui-issue[data-severity] · ui-status · ui-status-dot · ui-spinner(-sm/-lg) · ui-kbd
+ *   Superfici   ui-sheet · ui-card · ui-card-preview · ui-code · ui-list · ui-row
+ *   Sovrapposti ui-dropdown · ui-menu · ui-menu-title · ui-menu-item · ui-tooltip
+ *               ui-modal · ui-modal-box · ui-modal-title · ui-modal-body · ui-modal-actions
+ *               ui-modal-backdrop · ui-toasts · ui-toast · ui-toast-{info,success,warning,error}
+ *   Editor      ui-topbar · ui-rail · ui-tool · ui-tool-key · ui-panel · ui-panel-body
+ *               ui-section · ui-section-head · ui-section-title · ui-kind · ui-float-bar · ui-zoom
+ * ---------------------------------------------------------------------------
+ */
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="lavagna"], [data-theme="lavagna"] *));
+
+@font-face {
+  font-family: "Comfortaa";
+  src: url("/fonts/comfortaa-latin-wght-normal.woff2") format("woff2");
+  font-weight: 300 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Nunito";
+  src: url("/fonts/nunito-latin-wght-normal.woff2") format("woff2");
+  font-weight: 200 1000;
+  font-display: swap;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("/fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2");
+  font-weight: 100 800;
+  font-display: swap;
+}
+
+@theme {
+  --color-*: initial;
+  --font-sans: "Nunito", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Comfortaa", "Nunito", ui-sans-serif, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  --ease-out-quart: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-chrome: var(--chrome);
+  --color-raised: var(--raised);
+  --color-sunken: var(--sunken);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-on-accent: var(--on-accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-text: var(--accent-text);
+  --color-highlight: var(--highlight);
+  --color-danger: var(--danger);
+  --color-on-danger: var(--on-danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-text: var(--danger-text);
+  --color-warning: var(--warning);
+  --color-on-warning: var(--on-warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-text: var(--warning-text);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-text: var(--success-text);
+  --color-focus: var(--focus);
+  --shadow-sheet: 0 1px 2px var(--shadow-a), 0 8px 24px -6px var(--shadow-b);
+  --shadow-pop: 0 2px 4px var(--shadow-a), 0 18px 40px -10px var(--shadow-b);
+  --shadow-float: 0 1px 2px var(--shadow-a), 0 6px 16px -4px var(--shadow-b);
+}
+
+/* Livelli: overlay sul foglio → menu → tooltip → toast. I dialoghi stanno nel top layer. */
+:root {
+  --z-overlay: 10;
+  --z-dropdown: 30;
+  --z-tooltip: 40;
+  --z-toast: 60;
+}
+
+/* ---------------------------------------------------------------- quaderno */
+:root,
+[data-theme="quaderno"] {
+  color-scheme: light;
+  --paper: oklch(98.9% 0.004 95);
+  --chrome: oklch(96.7% 0.007 255);
+  --raised: oklch(100% 0 0);
+  --sunken: oklch(95.2% 0.009 255);
+  --line: oklch(89.5% 0.012 255);
+  --line-strong: oklch(66% 0.025 258);
+  --grid: oklch(93.5% 0.018 240);
+  --ink: oklch(26% 0.05 262);
+  --ink-2: oklch(42% 0.035 262);
+  --ink-3: oklch(50% 0.03 262);
+  --accent: oklch(47% 0.16 263);
+  --accent-hover: oklch(41% 0.15 263);
+  --on-accent: oklch(99% 0.005 263);
+  --accent-soft: oklch(94.5% 0.03 260);
+  --accent-text: oklch(45% 0.16 263);
+  --highlight: oklch(89% 0.14 98);
+  --danger: oklch(53% 0.2 27);
+  --on-danger: oklch(99% 0.005 27);
+  --danger-soft: oklch(96% 0.025 27);
+  --danger-text: oklch(49% 0.19 27);
+  --warning: oklch(80% 0.15 78);
+  --on-warning: oklch(25% 0.06 62);
+  --warning-soft: oklch(96.5% 0.045 88);
+  --warning-text: oklch(46% 0.1 62);
+  --success: oklch(58% 0.14 152);
+  --success-soft: oklch(95.8% 0.035 152);
+  --success-text: oklch(43% 0.1 152);
+  --focus: oklch(58% 0.18 263);
+  --shadow-a: oklch(30% 0.05 262 / 0.08);
+  --shadow-b: oklch(30% 0.05 262 / 0.16);
+  --scrim: oklch(26% 0.05 262 / 0.36);
+  --check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E");
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23525c75' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 6.5l3.5 3.5 3.5-3.5'/%3E%3C/svg%3E");
+
+  /* Diagramma: il tema chiaro e' anche quello dell'export (exporter.ts lo legge da qui) */
+  --er-paper: oklch(98.9% 0.004 95);
+  --er-grid: oklch(83% 0.045 240);
+  --er-ink: oklch(26% 0.05 262);
+  --er-entity: oklch(100% 0 0);
+  --er-rel: oklch(95% 0.075 98);
+  --er-isa: oklch(48% 0.09 155);
+  --er-error: oklch(53% 0.2 27);
+  --er-on-error: oklch(99% 0.005 27);
+  --er-select: oklch(58% 0.18 263);
+}
+
+/* ----------------------------------------------------------------- lavagna */
+[data-theme="lavagna"] {
+  color-scheme: dark;
+  --paper: oklch(24.5% 0.02 210);
+  --chrome: oklch(21% 0.017 215);
+  --raised: oklch(28.5% 0.02 212);
+  --sunken: oklch(19% 0.015 215);
+  --line: oklch(34% 0.02 212);
+  --line-strong: oklch(56% 0.022 212);
+  --grid: oklch(28% 0.02 210);
+  --ink: oklch(95% 0.008 95);
+  --ink-2: oklch(83% 0.014 210);
+  --ink-3: oklch(74% 0.016 210);
+  --accent: oklch(80% 0.1 240);
+  --accent-hover: oklch(86% 0.085 240);
+  --on-accent: oklch(21% 0.04 245);
+  --accent-soft: oklch(33% 0.045 240);
+  --accent-text: oklch(84% 0.09 240);
+  --highlight: oklch(87% 0.13 98);
+  --danger: oklch(74% 0.15 25);
+  --on-danger: oklch(20% 0.04 25);
+  --danger-soft: oklch(31% 0.06 25);
+  --danger-text: oklch(83% 0.1 25);
+  --warning: oklch(84% 0.13 82);
+  --on-warning: oklch(24% 0.05 62);
+  --warning-soft: oklch(31% 0.05 78);
+  --warning-text: oklch(88% 0.1 88);
+  --success: oklch(79% 0.12 155);
+  --success-soft: oklch(30% 0.045 155);
+  --success-text: oklch(86% 0.1 155);
+  --focus: oklch(82% 0.11 240);
+  --shadow-a: oklch(10% 0.02 215 / 0.35);
+  --shadow-b: oklch(10% 0.02 215 / 0.55);
+  --scrim: oklch(12% 0.02 215 / 0.6);
+  --check: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23131c26' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E");
+  --chevron: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%23c4ced3' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4.5 6.5l3.5 3.5 3.5-3.5'/%3E%3C/svg%3E");
+
+  --er-paper: oklch(24.5% 0.02 210);
+  --er-grid: oklch(37% 0.02 210);
+  --er-ink: oklch(95% 0.008 95);
+  --er-entity: oklch(29% 0.02 212);
+  --er-rel: oklch(35% 0.05 95);
+  --er-isa: oklch(80% 0.1 155);
+  --er-error: oklch(74% 0.15 25);
+  --er-on-error: oklch(20% 0.04 25);
+  --er-select: oklch(80% 0.1 240);
+}
+
+/* ------------------------------------------------------------------- base */
+@layer base {
+  html,
+  body {
+    height: 100%;
+  }
+  body {
+    @apply bg-paper font-sans text-ink antialiased;
+  }
+  ::selection {
+    background: color-mix(in oklch, var(--highlight) 70%, transparent);
+    color: var(--ink);
+  }
+  :focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+  button,
+  [role="button"],
+  label:has(> input[type="checkbox"]),
+  label:has(> input[type="radio"]) {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+  input[type="number"] {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+/* ------------------------------------------------------------- componenti */
+@layer components {
+  /* Pagina a quadretti (home, accesso) */
+  .ui-page {
+    @apply min-h-dvh bg-paper;
+    background-image:
+      linear-gradient(var(--grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+    background-size: 24px 24px;
+    background-position: -1px -1px;
+  }
+  .ui-brand {
+    @apply inline-flex items-center gap-2 rounded-lg px-1.5 py-1 text-ink no-underline transition-colors duration-150;
+  }
+  a.ui-brand:hover {
+    @apply bg-ink/5;
+  }
+  .ui-brand-name {
+    @apply font-display text-lg font-bold tracking-tight;
+  }
+  .ui-link {
+    @apply rounded-sm font-semibold text-accent-text underline decoration-accent-text/35 decoration-1 underline-offset-[3px] transition-colors duration-150 hover:decoration-accent-text;
+  }
+  .ui-divider {
+    @apply my-1 h-px w-full bg-line;
+  }
+
+  /* Bottoni: stessa forma ovunque, cambiano solo peso e colore */
+  .ui-btn {
+    @apply inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-line bg-raised px-3.5 text-sm font-bold whitespace-nowrap text-ink shadow-[0_1px_0_var(--shadow-a)] transition-[background-color,border-color,color,box-shadow,transform] duration-150 ease-out select-none;
+  }
+  .ui-btn:hover:not(:disabled, .is-disabled) {
+    @apply border-line-strong bg-sunken;
+  }
+  .ui-btn:active:not(:disabled, .is-disabled) {
+    transform: translateY(1px);
+  }
+  .ui-btn:disabled,
+  .ui-btn.is-disabled {
+    @apply pointer-events-none opacity-45 shadow-none;
+  }
+  .ui-btn-primary {
+    @apply border-accent bg-accent text-on-accent;
+  }
+  .ui-btn-primary:hover:not(:disabled, .is-disabled) {
+    @apply border-accent-hover bg-accent-hover;
+  }
+  .ui-btn-ghost {
+    @apply border-transparent bg-transparent text-ink-2 shadow-none;
+  }
+  .ui-btn-ghost:hover:not(:disabled, .is-disabled) {
+    @apply border-transparent bg-ink/[0.06] text-ink;
+  }
+  .ui-btn.is-active {
+    @apply border-accent bg-accent text-on-accent;
+  }
+  .ui-btn.is-active:hover {
+    @apply border-accent-hover bg-accent-hover text-on-accent;
+  }
+  .ui-btn-danger {
+    @apply border-danger/50 bg-transparent text-danger-text shadow-none;
+  }
+  .ui-btn-danger:hover:not(:disabled, .is-disabled) {
+    @apply border-danger bg-danger text-on-danger;
+  }
+  .ui-btn-danger-solid {
+    @apply border-danger bg-danger text-on-danger;
+  }
+  .ui-btn-danger-solid:hover:not(:disabled, .is-disabled) {
+    @apply border-danger bg-danger brightness-95;
+  }
+  .ui-btn-danger-ghost {
+    @apply border-transparent bg-transparent text-danger-text shadow-none;
+  }
+  .ui-btn-danger-ghost:hover:not(:disabled, .is-disabled) {
+    @apply border-transparent bg-danger-soft text-danger-text;
+  }
+  .ui-btn-sm {
+    @apply h-8 rounded-md px-2.5 text-[0.8125rem];
+  }
+  .ui-btn-xs {
+    @apply h-7 gap-1 rounded-md px-2 text-xs;
+  }
+  .ui-btn-icon {
+    @apply aspect-square px-0;
+  }
+  /* Gruppo di bottoni attaccati (annulla/ripeti, zoom) */
+  .ui-btn-group {
+    @apply inline-flex items-stretch rounded-lg border border-line bg-raised shadow-[0_1px_0_var(--shadow-a)];
+  }
+  .ui-btn-group > .ui-btn {
+    @apply rounded-none border-0 shadow-none;
+  }
+  .ui-btn-group > .ui-btn:first-child {
+    @apply rounded-l-[calc(var(--radius-lg)-1px)];
+  }
+  .ui-btn-group > .ui-btn:last-child {
+    @apply rounded-r-[calc(var(--radius-lg)-1px)];
+  }
+  .ui-btn-group > .ui-btn + .ui-btn {
+    @apply border-l border-line;
+  }
+  .ui-btn-group.is-quiet {
+    @apply border-transparent bg-transparent shadow-none;
+  }
+  .ui-btn-group.is-quiet > .ui-btn + .ui-btn {
+    @apply border-l-0;
+  }
+
+  /* Campi */
+  .ui-input,
+  .ui-select {
+    @apply h-9 w-full min-w-0 rounded-lg border border-line-strong bg-raised px-3 text-sm text-ink shadow-[inset_0_1px_1px_var(--shadow-a)] transition-[border-color,box-shadow,background-color] duration-150 outline-none placeholder:text-ink-3;
+  }
+  .ui-input:hover:not(:disabled, :read-only, :focus),
+  .ui-select:hover:not(:disabled, :focus) {
+    @apply border-ink-3;
+  }
+  .ui-input:focus,
+  .ui-select:focus {
+    @apply border-focus ring-3 ring-focus/25;
+    outline: none;
+  }
+  .ui-input:read-only {
+    @apply bg-sunken/60 shadow-none;
+  }
+  .ui-input:disabled,
+  .ui-select:disabled {
+    @apply cursor-not-allowed bg-sunken text-ink-3 opacity-80 shadow-none;
+  }
+  .ui-input-sm,
+  .ui-select-sm {
+    @apply h-8 rounded-md px-2.5 text-[0.8125rem];
+  }
+  .ui-select {
+    @apply appearance-none pr-8;
+    background-image: var(--chevron);
+    background-repeat: no-repeat;
+    background-position: right 0.5rem center;
+    background-size: 1rem;
+  }
+  .ui-select-sm {
+    @apply pr-7;
+    background-position: right 0.375rem center;
+  }
+  /* Titolo modificabile in linea: sembra testo finche' non lo tocchi */
+  .ui-input-title {
+    @apply h-9 w-full min-w-0 truncate rounded-lg border border-transparent bg-transparent px-2 font-display text-[0.9375rem] font-bold text-ink transition-[border-color,background-color,box-shadow] duration-150 outline-none;
+  }
+  .ui-input-title:hover:not(:read-only, :focus) {
+    @apply border-line bg-raised/60;
+  }
+  .ui-input-title:focus {
+    @apply border-focus bg-raised ring-3 ring-focus/25;
+    outline: none;
+  }
+  .ui-input-title:read-only {
+    @apply cursor-default;
+  }
+
+  .ui-checkbox,
+  .ui-radio {
+    @apply relative inline-grid size-[1.125rem] shrink-0 appearance-none place-content-center border-[1.5px] border-line-strong bg-raised transition-[background-color,border-color,box-shadow] duration-150;
+  }
+  .ui-checkbox {
+    @apply rounded-[0.3rem];
+  }
+  .ui-radio {
+    @apply rounded-full;
+  }
+  .ui-checkbox:hover:not(:disabled),
+  .ui-radio:hover:not(:disabled) {
+    @apply border-accent;
+  }
+  .ui-checkbox:checked {
+    @apply border-accent bg-accent;
+    background-image: var(--check);
+    background-size: 100%;
+  }
+  .ui-radio:checked {
+    @apply border-accent bg-accent shadow-[inset_0_0_0_3px_var(--raised)];
+  }
+  .ui-checkbox:disabled,
+  .ui-radio:disabled {
+    @apply cursor-not-allowed opacity-50;
+  }
+  .ui-checkbox-sm {
+    @apply size-4;
+  }
+  /* Riga "casella + testo" */
+  .ui-choice {
+    @apply flex items-center gap-2.5 rounded-md py-1 text-sm text-ink;
+  }
+  .ui-choice:has(:disabled) {
+    @apply cursor-default;
+  }
+  .ui-fieldset {
+    @apply flex min-w-0 flex-col gap-1 border-0 p-0;
+  }
+  .ui-legend {
+    @apply mb-1 p-0 text-[0.8125rem] font-extrabold text-ink;
+  }
+  .ui-hint {
+    @apply text-xs leading-snug text-ink-3;
+  }
+
+  /* Etichetta che sale sopra il campo quando si scrive (login) */
+  .ui-floating {
+    @apply relative block;
+  }
+  .ui-floating > span {
+    @apply pointer-events-none absolute top-0 left-2.5 z-1 rounded-sm bg-raised px-1 text-xs font-bold text-ink-2 opacity-0 transition-[opacity,transform] duration-150 ease-out;
+    transform: translateY(-20%);
+  }
+  .ui-floating:focus-within > span,
+  .ui-floating:has(> input:not(:placeholder-shown)) > span {
+    @apply opacity-100;
+    transform: translateY(-50%);
+  }
+  .ui-floating:focus-within > span {
+    @apply text-accent-text;
+  }
+  .ui-floating > .ui-input {
+    @apply h-11 text-[0.9375rem];
+  }
+
+  /* Schede a sottolineatura (pannello) */
+  .ui-tabs {
+    @apply flex items-end gap-1 border-b border-line;
+  }
+  .ui-tab {
+    @apply relative inline-flex h-10 items-center gap-1.5 rounded-t-md px-2.5 text-sm font-bold whitespace-nowrap text-ink-2 transition-colors duration-150;
+  }
+  .ui-tab::after {
+    @apply absolute inset-x-2 -bottom-px h-0.5 scale-x-0 rounded-full bg-accent transition-transform duration-200 content-[''];
+    transition-timing-function: var(--ease-out-quart);
+  }
+  .ui-tab:hover {
+    @apply text-ink;
+  }
+  .ui-tab.is-active {
+    @apply text-ink;
+  }
+  .ui-tab.is-active::after {
+    @apply scale-x-100;
+  }
+  .ui-tab:focus-visible {
+    outline-offset: -2px;
+  }
+
+  /* Interruttore segmentato (login, dialetto SQL) */
+  .ui-segmented {
+    @apply inline-flex items-stretch gap-0.5 rounded-lg border border-line bg-sunken p-0.5;
+  }
+  .ui-segment {
+    @apply inline-flex h-8 flex-1 items-center justify-center rounded-md px-3 text-[0.8125rem] font-bold whitespace-nowrap text-ink-2 transition-[background-color,color,box-shadow] duration-150;
+  }
+  .ui-segment:hover:not(.is-active) {
+    @apply text-ink;
+  }
+  .ui-segment.is-active {
+    @apply bg-raised text-ink shadow-[0_1px_2px_var(--shadow-a),0_0_0_1px_var(--line)];
+  }
+
+  /* Distintivi */
+  .ui-badge {
+    @apply inline-flex h-5 min-w-5 items-center justify-center gap-1 rounded-full border border-line bg-sunken px-2 text-[0.6875rem] leading-none font-extrabold whitespace-nowrap text-ink-2 tabular-nums;
+  }
+  .ui-badge-error {
+    @apply border-danger bg-danger text-on-danger;
+  }
+  .ui-badge-warning {
+    @apply border-warning bg-warning text-on-warning;
+  }
+  .ui-badge-accent {
+    @apply border-accent-soft bg-accent-soft text-accent-text;
+  }
+
+  /* Riquadri di messaggio: bordo pieno + fondo tinto, mai la striscia laterale */
+  .ui-callout {
+    @apply flex items-start gap-3 rounded-xl border px-3.5 py-3 text-sm leading-snug;
+  }
+  .ui-callout > svg {
+    @apply mt-px size-[1.125rem] shrink-0;
+  }
+  .ui-callout-info {
+    @apply border-accent/25 bg-accent-soft text-ink;
+  }
+  .ui-callout-info > svg {
+    @apply text-accent-text;
+  }
+  .ui-callout-warning {
+    @apply border-warning/50 bg-warning-soft text-ink;
+  }
+  .ui-callout-warning > svg {
+    @apply text-warning-text;
+  }
+  .ui-callout-error {
+    @apply border-danger/35 bg-danger-soft text-ink;
+  }
+  .ui-callout-error > svg {
+    @apply text-danger-text;
+  }
+
+  /* Problema cliccabile nel pannello */
+  .ui-issue {
+    @apply flex w-full items-start gap-2.5 rounded-lg border px-3 py-2.5 text-left text-sm leading-snug text-ink transition-[background-color,border-color] duration-150;
+  }
+  .ui-issue > svg {
+    @apply mt-px size-4 shrink-0;
+  }
+  .ui-issue[data-severity="error"] {
+    @apply border-danger/30 bg-danger-soft;
+  }
+  .ui-issue[data-severity="error"] > svg {
+    @apply text-danger-text;
+  }
+  .ui-issue[data-severity="error"]:hover {
+    @apply border-danger/70;
+  }
+  .ui-issue[data-severity="warning"] {
+    @apply border-warning/50 bg-warning-soft;
+  }
+  .ui-issue[data-severity="warning"] > svg {
+    @apply text-warning-text;
+  }
+  .ui-issue[data-severity="warning"]:hover {
+    @apply border-warning;
+  }
+
+  /* Stato di salvataggio */
+  .ui-status {
+    @apply inline-flex items-center gap-1.5 text-xs font-semibold whitespace-nowrap text-ink-3;
+  }
+  .ui-status-dot {
+    @apply size-2 shrink-0 rounded-full bg-success;
+  }
+  .ui-status-dot.is-busy {
+    @apply bg-warning;
+    animation: ui-pulse 1s ease-in-out infinite;
+  }
+  .ui-status-dot.is-error {
+    @apply bg-danger;
+  }
+
+  .ui-spinner {
+    @apply inline-block size-5 shrink-0 animate-spin rounded-full border-2 border-current border-r-transparent opacity-80;
+    animation-duration: 0.7s;
+  }
+  .ui-spinner-sm {
+    @apply size-4;
+  }
+  .ui-spinner-lg {
+    @apply size-9 border-[3px];
+  }
+
+  .ui-kbd {
+    @apply inline-flex h-5 min-w-5 items-center justify-center rounded-[0.3rem] border border-b-2 border-line-strong/80 bg-raised px-1.5 font-sans text-[0.6875rem] leading-none font-extrabold whitespace-nowrap text-ink-2;
+  }
+
+  /* Fogli e schede */
+  .ui-sheet {
+    @apply rounded-2xl border border-line bg-raised shadow-sheet;
+  }
+  .ui-card {
+    @apply relative flex flex-col overflow-hidden rounded-xl border border-line bg-raised shadow-[0_1px_2px_var(--shadow-a)] transition-[box-shadow,border-color] duration-200;
+    transition-timing-function: var(--ease-out-quart);
+  }
+  .ui-card:hover,
+  .ui-card:focus-within {
+    @apply border-line-strong shadow-float;
+  }
+  .ui-card-preview {
+    @apply block h-44 overflow-hidden border-b border-line bg-paper;
+  }
+  .ui-card-preview:focus-visible {
+    outline-offset: -3px;
+  }
+  .ui-code {
+    @apply overflow-auto rounded-lg border border-line bg-sunken p-3.5 font-mono text-xs leading-relaxed text-ink;
+    tab-size: 2;
+  }
+  .ui-list {
+    @apply flex flex-col rounded-xl border border-line bg-raised;
+  }
+  .ui-row {
+    @apply flex flex-col gap-2 px-2.5 py-2.5;
+  }
+  .ui-row + .ui-row {
+    @apply border-t border-line;
+  }
+
+  /* Menu a tendina (si apre col focus, si chiude quando il focus esce) */
+  .ui-dropdown {
+    @apply relative;
+  }
+  .ui-menu {
+    @apply invisible absolute top-full right-0 z-(--z-dropdown) mt-2 flex w-64 origin-top-right scale-[0.97] flex-col gap-px rounded-xl border border-line bg-raised p-1.5 opacity-0 shadow-pop transition-[opacity,scale,visibility] duration-150;
+    transition-timing-function: var(--ease-out-quart);
+  }
+  .ui-dropdown:focus-within > .ui-menu {
+    @apply visible scale-100 opacity-100;
+  }
+  .ui-menu-title {
+    @apply truncate px-2.5 pt-2 pb-1 text-xs font-bold text-ink-3;
+  }
+  .ui-menu-title:first-child {
+    @apply pt-1;
+  }
+  .ui-menu-item {
+    @apply flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm font-semibold text-ink transition-colors duration-100;
+  }
+  .ui-menu-item:hover:not(:disabled),
+  .ui-menu-item:focus-visible {
+    @apply bg-accent-soft text-ink;
+  }
+  .ui-menu-item:focus-visible {
+    outline-offset: -2px;
+  }
+  .ui-menu-item:disabled {
+    @apply cursor-not-allowed text-ink-3 opacity-60;
+  }
+  .ui-menu-item > svg {
+    @apply size-4 shrink-0 text-ink-3;
+  }
+  .ui-menu-item.is-danger {
+    @apply text-danger-text;
+  }
+  .ui-menu-item.is-danger:hover {
+    @apply bg-danger-soft;
+  }
+
+  /* Suggerimento da data-tip, a destra del bottone (palette) */
+  .ui-tooltip {
+    @apply relative;
+  }
+  .ui-tooltip::after {
+    @apply pointer-events-none invisible absolute top-1/2 left-full z-(--z-tooltip) ml-2.5 w-max max-w-64 -translate-x-1 -translate-y-1/2 rounded-lg bg-ink px-2.5 py-1.5 text-xs leading-snug font-semibold text-paper opacity-0 shadow-float transition-[opacity,translate,visibility] duration-150 content-[attr(data-tip)];
+  }
+  .ui-tooltip:hover::after,
+  .ui-tooltip:has(:focus-visible)::after {
+    @apply visible translate-x-0 opacity-100;
+    transition-delay: 300ms;
+  }
+  .ui-tooltip:has(:focus-visible)::after {
+    transition-delay: 0ms;
+  }
+
+  /* Dialoghi nativi <dialog>: il <form class="ui-modal-backdrop"> chiude al clic fuori */
+  .ui-modal {
+    @apply fixed inset-0 m-0 grid h-dvh max-h-none w-screen max-w-none place-items-center overflow-y-auto border-0 bg-transparent p-4 text-ink;
+  }
+  .ui-modal:not([open]) {
+    display: none;
+  }
+  .ui-modal::backdrop {
+    background: var(--scrim);
+    backdrop-filter: blur(2px);
+  }
+  .ui-modal-box {
+    @apply relative z-1 flex w-full max-w-md flex-col gap-3 rounded-2xl border border-line bg-raised p-6 shadow-pop;
+  }
+  .ui-modal-title {
+    @apply font-display text-lg leading-snug font-bold text-ink;
+  }
+  .ui-modal-body {
+    @apply text-sm leading-relaxed text-ink-2;
+  }
+  .ui-modal-actions {
+    @apply mt-3 flex flex-wrap items-center justify-end gap-2;
+  }
+  .ui-modal-backdrop {
+    @apply absolute inset-0 z-0;
+  }
+  .ui-modal-backdrop > button {
+    @apply size-full cursor-default text-transparent;
+  }
+  .ui-modal-backdrop > button:focus-visible {
+    outline: none;
+  }
+
+  /* Notifiche */
+  .ui-toasts {
+    @apply pointer-events-none fixed inset-x-3 bottom-3 z-(--z-toast) flex flex-col items-stretch gap-2 sm:inset-x-auto sm:right-4 sm:bottom-4 sm:w-96 sm:items-end;
+  }
+  .ui-toast {
+    @apply pointer-events-auto flex w-full items-start gap-3 rounded-xl border border-line bg-raised py-2.5 pr-2 pl-3 text-sm leading-snug text-ink shadow-pop;
+  }
+  .ui-toast > svg {
+    @apply mt-0.5 size-[1.125rem] shrink-0;
+  }
+  .ui-toast-info > svg {
+    @apply text-accent-text;
+  }
+  .ui-toast-success > svg {
+    @apply text-success-text;
+  }
+  .ui-toast-warning {
+    @apply border-warning/70;
+  }
+  .ui-toast-warning > svg {
+    @apply text-warning-text;
+  }
+  .ui-toast-error {
+    @apply border-danger/45;
+  }
+  .ui-toast-error > svg {
+    @apply text-danger-text;
+  }
+
+  /* ---- Editor */
+  .ui-topbar {
+    @apply relative z-(--z-dropdown) flex h-14 min-w-0 items-center gap-1 border-b border-line bg-chrome px-2 sm:gap-2 sm:px-3;
+  }
+  .ui-rail {
+    @apply flex h-full flex-col items-center gap-1 border-r border-line bg-chrome px-2 py-3;
+  }
+  .ui-tool {
+    @apply relative inline-grid size-10 place-items-center rounded-lg border border-transparent text-ink-2 transition-[background-color,color,border-color] duration-150;
+  }
+  .ui-tool:hover:not(:disabled) {
+    @apply bg-ink/[0.06] text-ink;
+  }
+  .ui-tool.is-active,
+  .ui-tool.is-active:hover {
+    @apply border-accent bg-accent text-on-accent shadow-[0_1px_2px_var(--shadow-a)];
+  }
+  .ui-tool:disabled {
+    @apply cursor-not-allowed opacity-40;
+  }
+  .ui-tool-key {
+    @apply pointer-events-none absolute right-1 bottom-0.5 font-sans text-[0.5625rem] leading-none font-extrabold opacity-75;
+  }
+  .ui-panel {
+    @apply flex h-full min-h-0 flex-col bg-chrome;
+  }
+  .ui-panel-body {
+    @apply flex flex-col gap-6 p-4;
+  }
+  .ui-section {
+    @apply flex flex-col gap-2;
+  }
+  .ui-section-head {
+    @apply flex min-h-7 items-center justify-between gap-2;
+  }
+  .ui-section-title {
+    @apply text-[0.8125rem] font-extrabold text-ink;
+  }
+  .ui-kind {
+    @apply mb-1.5 flex items-center gap-1.5 text-xs font-bold text-ink-3;
+  }
+  .ui-kind > svg {
+    @apply size-3.5;
+  }
+  /* Barra che galleggia sul foglio (avvisi, generalizzazione) */
+  .ui-float-bar {
+    @apply absolute top-3 left-1/2 z-(--z-overlay) flex w-max max-w-[92%] -translate-x-1/2 items-center gap-3 rounded-xl border border-line bg-raised px-3.5 py-2 text-sm leading-snug text-ink shadow-float;
+  }
+  .ui-float-bar > svg {
+    @apply size-[1.125rem] shrink-0 text-accent-text;
+  }
+  .ui-zoom {
+    @apply absolute right-3 bottom-3 z-(--z-overlay) shadow-float;
+  }
+}
+
+@keyframes ui-pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+@keyframes ui-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+}
+@keyframes ui-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+}
+@keyframes ui-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ui-modal[open] > .ui-modal-box {
+    animation: ui-dialog-in 200ms var(--ease-out-expo);
+  }
+  .ui-modal[open]::backdrop {
+    animation: ui-fade 200ms ease-out;
+  }
+  .ui-toast {
+    animation: ui-rise 220ms var(--ease-out-expo);
+  }
+  .ui-float-bar {
+    animation: ui-fade 180ms ease-out;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ui-btn,
+  .ui-tab::after,
+  .ui-menu,
+  .ui-tooltip::after,
+  .ui-card {
+    transition-duration: 1ms;
+  }
+  .ui-status-dot.is-busy {
+    animation: none;
+  }
+  .ui-spinner {
+    animation-duration: 1.6s;
+  }
+}
+
+/* ------------------------------------------------- diagramma (SVG, notazione) */
+.er-canvas { background: var(--er-paper); touch-action: none; user-select: none; }
+.er-grid-dot { fill: var(--er-grid); }
+.er-entity-shape { fill: var(--er-entity); stroke: var(--er-ink); stroke-width: 2; }
+.er-rel-shape { fill: var(--er-rel); stroke: var(--er-ink); stroke-width: 2; stroke-linejoin: round; }
+.er-line { stroke: var(--er-ink); stroke-width: 1.75; stroke-linecap: round; fill: none; }
+.er-isa-line { stroke: var(--er-isa); stroke-width: 2; stroke-linecap: round; fill: none; }
+.er-isa-arrow { fill: var(--er-paper); stroke: var(--er-isa); stroke-width: 2; stroke-linejoin: round; }
+.er-line.is-optional { stroke-dasharray: 7 5; }
+.er-entity-weak { fill: none; stroke: var(--er-ink); stroke-width: 1.5; }
+.er-kind { font-family: var(--font-sans); font-size: 12px; font-weight: 800; fill: var(--er-error); text-anchor: middle; }
+.er-dot { fill: var(--er-entity); stroke: var(--er-ink); stroke-width: 2; cursor: pointer; }
+.er-dot.is-key { fill: var(--er-ink); }
+.er-composite { fill: var(--er-entity); stroke: var(--er-ink); stroke-width: 1.75; cursor: pointer; }
+.er-composite.is-key { stroke-width: 3; }
+.er-composite-label { dominant-baseline: central; cursor: pointer; }
+.er-part-dot { fill: var(--er-entity); stroke: var(--er-ink); stroke-width: 1.75; }
+.er-name { font-family: var(--font-display); font-size: 16px; font-weight: 700; fill: var(--er-ink); text-anchor: middle; dominant-baseline: central; }
+.er-label { font-family: var(--font-sans); font-size: 13px; font-weight: 600; fill: var(--er-ink); }
+.er-card { font-family: var(--font-sans); font-size: 12px; font-weight: 800; fill: var(--er-ink); text-anchor: middle; dominant-baseline: central; }
+.er-card.is-missing { fill: var(--er-error); }
+.er-isa-label { font-family: var(--font-sans); font-size: 12px; font-weight: 800; fill: var(--er-isa); }
+.er-selected { stroke: var(--er-select); stroke-width: 7; fill: none; opacity: 0.32; stroke-linejoin: round; }
+.er-error-ring { stroke: var(--er-error); stroke-width: 2; stroke-dasharray: 6 4; fill: none; }
+.er-error-badge { fill: var(--er-error); }
+.er-error-badge-text { fill: var(--er-on-error); font-family: var(--font-sans); font-size: 11px; font-weight: 800; text-anchor: middle; dominant-baseline: central; }
+.er-hit { fill: transparent; stroke: transparent; }
+.er-hit-line { stroke: transparent; stroke-width: 12; fill: none; }
+.er-marquee { fill: color-mix(in oklch, var(--er-select) 12%, transparent); stroke: var(--er-select); stroke-dasharray: 4 3; }
+.er-ghost-line { stroke: var(--er-select); stroke-width: 2; stroke-dasharray: 6 4; fill: none; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .er-appear { animation: er-pop 150ms ease-out; transform-box: fill-box; transform-origin: center; }
+}
+@keyframes er-pop { from { opacity: 0; transform: scale(0.96); } }
+
+.er-name-sm { font-size: 14px; }

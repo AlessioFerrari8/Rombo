@@ -1,0 +1,33 @@
+<section class="ui-panel-body gap-3" aria-label="Schema logico">
+  @if (store.logical(); as l) {
+    <div class="flex gap-2">
+      <button type="button" class="ui-btn ui-btn-sm" (click)="copy()">
+        <svg viewBox="0 0 24 24" class="size-4 text-ink-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2" /></svg>
+        Copia
+      </button>
+      <button type="button" class="ui-btn ui-btn-sm" (click)="download()">
+        <svg viewBox="0 0 24 24" class="size-4 text-ink-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>
+        Scarica .txt
+      </button>
+    </div>
+    <ul class="ui-list font-mono text-[0.8125rem]">
+      @for (t of l.tables; track t.name) {
+        <li class="ui-row block leading-relaxed break-words" [attr.data-table]="t.name">
+          <span class="font-bold text-ink">{{ t.name.toUpperCase() }}</span><span class="text-ink-3">(</span>@for (c of cols(t); track c.name; let last = $last) {<span class="decoration-2 underline-offset-3" [class.underline]="c.pk" [class.font-bold]="c.pk">{{ c.name }}</span>@if (c.fk) {<span class="text-accent-text">→{{ c.fk }}</span>}@if (c.nullable) {<span class="text-ink-3">*</span>}@if (!last) {<span class="text-ink-3">, </span>}}<span class="text-ink-3">)</span>
+        </li>
+      }
+    </ul>
+    <p class="ui-hint">Sottolineato: chiave primaria · →T: chiave esterna verso T · *: può essere NULL</p>
+    @for (n of l.notes; track $index) {
+      <p class="ui-callout ui-callout-info">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 11v5M12 7.5h.01" /></svg>
+        <span>{{ n }}</span>
+      </p>
+    }
+  } @else {
+    <div class="ui-callout ui-callout-warning flex-col items-start gap-2.5">
+      <span>Ci sono {{ store.errorCount() }} errori da correggere prima di tradurre il diagramma.</span>
+      <button type="button" class="ui-btn ui-btn-sm" (click)="store.panelTab.set('problems')">Vedi i problemi</button>
+    </div>
+  }
+</section>

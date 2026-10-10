@@ -1,0 +1,120 @@
+<div class="ui-page">
+  <header class="border-b border-line bg-paper/85 backdrop-blur-sm">
+    <div class="mx-auto flex h-16 max-w-6xl items-center gap-2 px-4 sm:px-6">
+      <span class="ui-brand -ml-1.5">
+        <svg viewBox="0 0 32 32" class="size-8" aria-hidden="true">
+          <rect x="2" y="9" width="14" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="2.5" class="text-accent" />
+          <path d="M23 6l7 10-7 10-7-10z" fill="currentColor" class="text-highlight" />
+          <path d="M23 6l7 10-7 10-7-10z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" class="text-ink" />
+        </svg>
+        <span class="ui-brand-name text-xl">Rombo</span>
+      </span>
+      <button type="button" class="ui-btn ui-btn-ghost ui-btn-icon ml-auto" (click)="theme.toggle()"
+        [attr.aria-label]="theme.theme() === 'quaderno' ? 'Passa al tema scuro' : 'Passa al tema chiaro'">
+        @if (theme.theme() === 'quaderno') {
+          <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M20 14.5A8 8 0 019.5 4 8 8 0 1020 14.5z" /></svg>
+        } @else {
+          <svg viewBox="0 0 24 24" class="size-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4" /><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" /></svg>
+        }
+      </button>
+      @if (!desktop) {
+        <app-account-menu />
+      }
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-6xl px-4 pb-20 sm:px-6">
+    <div class="flex flex-wrap items-end justify-between gap-x-6 gap-y-5 pt-10 pb-8 sm:pt-14">
+      <div>
+        <h1 class="font-display text-[2rem] leading-tight font-bold tracking-tight sm:text-[2.5rem]">I miei diagrammi</h1>
+        <p class="mt-2 text-ink-2">Si salvano da soli in questo browser, mentre lavori.</p>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button type="button" class="ui-btn ui-btn-primary" (click)="create()">
+          <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+          Nuovo diagramma
+        </button>
+        <label class="ui-btn has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus">
+          <svg viewBox="0 0 24 24" class="size-4 text-ink-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7a2 2 0 012-2h4l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H6a2 2 0 01-2-2z" /></svg>
+          Apri file…
+          <input type="file" class="sr-only" accept=".json,application/json" (change)="openFile($event)" />
+        </label>
+      </div>
+    </div>
+
+    @if (sync.pendingClaims() && auth.user()) {
+      <div role="status" class="ui-callout ui-callout-info mb-8 flex-wrap items-center">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a5 5 0 01-.6-9.96A6 6 0 0118 9a4.5 4.5 0 01-.5 9H7z" /><path d="M12 15V10M9.5 12.5L12 10l2.5 2.5" /></svg>
+        <span class="min-w-48 flex-1">Su questo dispositivo ci sono {{ sync.pendingClaims() }} diagrammi creati senza account. Sono tuoi?</span>
+        <button type="button" class="ui-btn ui-btn-primary ui-btn-sm" (click)="sync.claimAll()">Caricali nel mio account</button>
+      </div>
+    }
+
+    @if (records(); as list) {
+      @if (!list.length) {
+        <div class="ui-sheet mx-auto flex max-w-xl flex-col items-center gap-3 px-6 py-12 text-center sm:px-10">
+          <svg viewBox="0 0 200 90" class="mb-2 w-56" aria-hidden="true">
+            <rect x="6" y="28" width="58" height="34" rx="8" class="fill-raised stroke-ink" stroke-width="2.5" />
+            <path d="M100 22l26 23-26 23-26-23z" class="fill-highlight/60 stroke-ink" stroke-width="2.5" stroke-linejoin="round" />
+            <rect x="136" y="28" width="58" height="34" rx="8" class="fill-raised stroke-ink" stroke-width="2.5" stroke-dasharray="6 5" />
+            <path d="M64 45h10M126 45h10" class="stroke-ink" stroke-width="2.5" stroke-linecap="round" />
+          </svg>
+          <h2 class="font-display text-2xl font-bold">Ancora nessun diagramma</h2>
+          <p class="max-w-sm text-ink-2">Crea il primo, oppure apri un file esportato da Rombo, DiagrammiER o erdrawer.</p>
+          <button type="button" class="ui-btn ui-btn-primary mt-3" (click)="create()">Nuovo diagramma</button>
+        </div>
+      } @else {
+        <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          @for (r of list; track r.id) {
+            <article class="ui-card">
+              <a class="ui-card-preview" [routerLink]="['/d', r.id]" [attr.aria-label]="'Apri ' + r.diagram.title">
+                <app-diagram-preview [diagram]="r.diagram" />
+              </a>
+              <div class="flex flex-col gap-1 px-4 pt-3.5 pb-3">
+                <h2 class="truncate font-display text-base font-bold">
+                  <a [routerLink]="['/d', r.id]" class="rounded-sm hover:text-accent-text hover:underline hover:decoration-1 hover:underline-offset-4">{{ r.diagram.title }}</a>
+                </h2>
+                <p class="text-[0.8125rem] text-ink-3">
+                  {{ r.diagram.entities.length }} entità · modificato {{ r.updatedAt | date: 'd MMM, HH:mm' }}
+                </p>
+                <div class="-mr-1.5 mt-1.5 flex justify-end gap-1">
+                  <button type="button" class="ui-btn ui-btn-ghost ui-btn-sm" (click)="duplicate(r)">
+                    <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2" /></svg>
+                    Duplica
+                  </button>
+                  <button type="button" class="ui-btn ui-btn-danger-ghost ui-btn-sm" (click)="askDelete(r)">
+                    <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 12a2 2 0 002 2h6a2 2 0 002-2l1-12M9 7V4h6v3" /></svg>
+                    Elimina
+                  </button>
+                </div>
+              </div>
+            </article>
+          }
+        </div>
+      }
+    } @else {
+      <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3" aria-hidden="true">
+        @for (i of [1, 2, 3]; track i) {
+          <div class="ui-card animate-pulse">
+            <div class="h-44 border-b border-line bg-sunken"></div>
+            <div class="flex flex-col gap-2 px-4 py-4">
+              <div class="h-4 w-1/2 rounded bg-sunken"></div>
+              <div class="h-3 w-2/3 rounded bg-sunken"></div>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  </main>
+
+  <dialog #deleteDialog class="ui-modal" aria-labelledby="del-title">
+    <div class="ui-modal-box">
+      <h2 id="del-title" class="ui-modal-title">Eliminare «{{ pendingDelete()?.diagram?.title }}»?</h2>
+      <p class="ui-modal-body">Non si può annullare.</p>
+      <div class="ui-modal-actions">
+        <form method="dialog"><button class="ui-btn">Annulla</button></form>
+        <button type="button" class="ui-btn ui-btn-danger-solid" (click)="confirmDelete()">Elimina</button>
+      </div>
+    </div>
+  </dialog>
+</div>

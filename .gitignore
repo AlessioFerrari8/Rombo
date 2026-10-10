@@ -1,0 +1,9 @@
+node_modules/
+web/node_modules/
+web/dist/
+web/.angular/
+dist/
+release/
+*.log
+.env
+.superpowers/

@@ -1,0 +1,47 @@
+<main class="ui-page flex flex-col items-center justify-center px-4 py-10">
+  <div class="w-full max-w-md">
+    <a routerLink="/" class="ui-brand mb-5 -ml-1.5 text-sm font-bold text-ink-2 hover:text-ink">
+      <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
+      I miei diagrammi
+    </a>
+    <div class="ui-sheet">
+      <form class="flex flex-col gap-4 p-6 sm:p-8" (submit)="submit($event)" novalidate>
+        <svg viewBox="0 0 32 32" class="size-10" aria-hidden="true">
+          <rect x="2" y="9" width="14" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="2.5" class="text-accent" />
+          <path d="M23 6l7 10-7 10-7-10z" fill="currentColor" class="text-highlight" />
+          <path d="M23 6l7 10-7 10-7-10z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" class="text-ink" />
+        </svg>
+        <div class="flex flex-col gap-2">
+          <h1 class="font-display text-[1.75rem] leading-tight font-bold tracking-tight">{{ mode() === 'login' ? 'Accedi' : 'Crea un account' }}</h1>
+          <p class="text-sm leading-relaxed text-ink-2">Con un account i diagrammi si salvano anche sul server, li ritrovi su altri dispositivi e puoi condividerli con un link.</p>
+        </div>
+        <div role="tablist" class="ui-segmented my-1 w-full">
+          <button type="button" role="tab" class="ui-segment" [class.is-active]="mode() === 'login'" [attr.aria-selected]="mode() === 'login'" (click)="mode.set('login')">Accedi</button>
+          <button type="button" role="tab" class="ui-segment" [class.is-active]="mode() === 'register'" [attr.aria-selected]="mode() === 'register'" (click)="mode.set('register')">Crea account</button>
+        </div>
+        <label class="ui-floating">
+          <span>Email</span>
+          <input class="ui-input" type="email" autocomplete="email" required maxlength="254" placeholder="Email" [value]="email()" (input)="email.set($any($event.target).value)" />
+        </label>
+        <label class="ui-floating">
+          <span>Password</span>
+          <input class="ui-input" type="password" required minlength="10" maxlength="72" placeholder="Password"
+            [attr.autocomplete]="mode() === 'login' ? 'current-password' : 'new-password'" [value]="password()" (input)="password.set($any($event.target).value)" />
+        </label>
+        @if (mode() === 'register') {
+          <p class="ui-hint -mt-1">Almeno 10 caratteri. Salviamo solo l'email e la password cifrata; puoi eliminare l'account e tutti i diagrammi quando vuoi.</p>
+        }
+        @if (error(); as msg) {
+          <div role="alert" class="ui-callout ui-callout-error">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5M12 16.5h.01" /></svg>
+            <span>{{ msg }}</span>
+          </div>
+        }
+        <button class="ui-btn ui-btn-primary mt-1 h-11 text-[0.9375rem]" type="submit" [disabled]="busy()">
+          @if (busy()) { <span class="ui-spinner ui-spinner-sm"></span> }
+          {{ mode() === 'login' ? 'Accedi' : 'Crea account' }}
+        </button>
+      </form>
+    </div>
+  </div>
+</main>

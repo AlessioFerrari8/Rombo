@@ -1,0 +1,24 @@
+<aside class="ui-panel lg:border-l lg:border-line">
+  <div role="tablist" class="ui-tabs shrink-0 flex-nowrap overflow-x-auto px-2 [scrollbar-width:none]">
+    @for (t of tabs; track t.id) {
+      <button type="button" role="tab" class="ui-tab" [class.is-active]="store.panelTab() === t.id" [attr.aria-selected]="store.panelTab() === t.id" (click)="store.panelTab.set(t.id)">
+        {{ t.label }}
+        @if (t.id === 'problems') {
+          @if (store.errorCount()) {
+            <span class="ui-badge ui-badge-error">{{ store.errorCount() }}</span>
+          } @else if (warnings()) {
+            <span class="ui-badge ui-badge-warning">{{ warnings() }}</span>
+          }
+        }
+      </button>
+    }
+  </div>
+  <div class="min-h-0 flex-1 overflow-y-auto" role="tabpanel">
+    @switch (store.panelTab()) {
+      @case ('props') { <app-properties /> }
+      @case ('problems') { <app-problems /> }
+      @case ('logical') { <app-logical-panel /> }
+      @case ('sql') { <app-sql-panel /> }
+    }
+  </div>
+</aside>

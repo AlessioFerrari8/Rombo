@@ -1,0 +1,18 @@
+<dialog #dialog class="ui-modal" aria-labelledby="conflict-title" (cancel)="$event.preventDefault()">
+  <div class="ui-modal-box max-w-lg">
+    <div class="flex items-start gap-3">
+      <span class="grid size-9 shrink-0 place-items-center rounded-full bg-warning-soft text-warning-text">
+        <svg viewBox="0 0 24 24" class="size-[1.125rem]" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h11M11 3l4 4-4 4M20 17H9M13 13l-4 4 4 4" /></svg>
+      </span>
+      <h2 id="conflict-title" class="ui-modal-title pt-1">Questo diagramma è cambiato anche altrove</h2>
+    </div>
+    <p class="ui-modal-body">
+      Sul server c'è una versione più recente («{{ server()?.title }}»), salvata da un altro dispositivo o da un'altra scheda.
+      Quale vuoi tenere? L'altra viene sovrascritta.
+    </p>
+    <div class="ui-modal-actions">
+      <button type="button" class="ui-btn" (click)="useServer()">Usa quella del server</button>
+      <button type="button" class="ui-btn ui-btn-primary" (click)="keepMine()">Tieni la mia</button>
+    </div>
+  </div>
+</dialog>

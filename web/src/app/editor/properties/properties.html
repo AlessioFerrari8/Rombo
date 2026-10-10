@@ -1,0 +1,300 @@
+<section class="ui-panel-body" aria-label="Proprietà">
+  @if (entity(); as e) {
+    <header>
+      <p class="ui-kind">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="1.5" y="4" width="13" height="8" rx="2" /></svg>
+        Entità
+      </p>
+      <input class="ui-input h-10 font-display text-base font-bold" aria-label="Nome dell'entità" maxlength="80"
+        [value]="e.name" [readonly]="ro()" (change)="renameEl(e.id, $any($event.target).value)" />
+    </header>
+
+    <div class="ui-section">
+      <div class="ui-section-head">
+        <h3 class="ui-section-title">Attributi</h3>
+        <button type="button" class="ui-btn ui-btn-ghost ui-btn-xs text-accent-text" [disabled]="ro()" (click)="addAttr(e.id)">+ Aggiungi</button>
+      </div>
+      <p class="ui-hint -mt-1">La casella a sinistra mette l'attributo nell'identificatore.</p>
+      @if (!e.attributes.length) {
+        <p class="rounded-xl border border-dashed border-line-strong/60 px-3 py-4 text-center text-[0.8125rem] text-ink-2">Nessun attributo: premi <kbd class="ui-kbd">A</kbd> o «+ Aggiungi».</p>
+      } @else {
+        <ul class="ui-list">
+          @for (a of e.attributes; track a.id) {
+            <li class="ui-row">
+              <div class="flex items-center gap-2">
+                <input type="checkbox" class="ui-checkbox" title="Identificatore"
+                  [attr.aria-label]="'Identificatore: ' + a.name" [checked]="isKey(e, a.id)" [disabled]="ro()" (change)="toggleKey(e.id, a.id)" />
+                <input class="ui-input ui-input-sm" aria-label="Nome dell'attributo" maxlength="80"
+                  [value]="a.name" [readonly]="ro()" (change)="renameEl(a.id, $any($event.target).value)" />
+                <button type="button" class="ui-btn ui-btn-ghost ui-btn-xs ui-btn-icon hover:text-danger-text!" [attr.aria-label]="'Elimina ' + a.name" [disabled]="ro()" (click)="remove([a.id])">
+                  <svg viewBox="0 0 24 24" class="size-3.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                </button>
+              </div>
+              <div class="flex gap-2">
+                <select class="ui-select ui-select-sm w-24 shrink-0" aria-label="Cardinalità dell'attributo" [disabled]="ro()" (change)="setCard(a.id, $any($event.target).value)">
+                  @for (c of cards; track c.value) {
+                    <option [value]="c.value" [selected]="c.value === a.card">{{ c.label }}</option>
+                  }
+                </select>
+                <app-type-picker class="min-w-0 flex-1" [value]="a.type" [disabled]="ro()" (changed)="setType(a.id, $event)" />
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+
+    @if (externalCandidates(e).length) {
+      <div class="ui-section">
+        <h3 class="ui-section-title">Identificatore esterno</h3>
+        <p class="ui-hint -mt-1">Per le entità deboli: l'identificatore comprende anche la chiave dell'entità collegata.</p>
+        @for (c of externalCandidates(e); track c.rel.id) {
+          <label class="ui-choice flex-wrap">
+            <input type="checkbox" class="ui-checkbox" [checked]="c.on" [disabled]="ro()" (change)="toggleExternal(e, c.rel.id)" />
+            <span class="min-w-0 flex-1">tramite «{{ c.rel.name }}» verso {{ c.otherName }}</span>
+            @if (!c.valid) {
+              <span class="ui-badge ui-badge-warning">serve (1,1)</span>
+            }
+          </label>
+        }
+      </div>
+    }
+
+    <div class="ui-section">
+      <div class="ui-section-head">
+        <h3 class="ui-section-title">Chiavi alternative</h3>
+        <button type="button" class="ui-btn ui-btn-ghost ui-btn-xs text-accent-text" [disabled]="ro() || !e.attributes.length" (click)="addAlternate(e)">+ Aggiungi</button>
+      </div>
+      @if (e.alternates.length) {
+        <ul class="ui-list">
+          @for (set of e.alternates; track $index; let i = $index) {
+            <li class="ui-row flex-row items-start gap-2">
+              <div class="flex min-w-0 flex-1 flex-wrap gap-x-4 gap-y-0.5">
+                @for (a of e.attributes; track a.id) {
+                  <label class="ui-choice gap-2">
+                    <input type="checkbox" class="ui-checkbox ui-checkbox-sm" [checked]="set.includes(a.id)" [disabled]="ro()" (change)="toggleAlternate(e, i, a.id)" />
+                    {{ a.name }}
+                  </label>
+                }
+              </div>
+              <button type="button" class="ui-btn ui-btn-ghost ui-btn-xs" [disabled]="ro()" (click)="removeAlternate(e, i)">Togli</button>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+
+    <button type="button" class="ui-btn ui-btn-danger ui-btn-sm self-start" [disabled]="ro()" (click)="remove([e.id])">Elimina entità</button>
+  } @else if (relationship(); as r) {
+    <header>
+      <p class="ui-kind">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M8 2l6.5 6L8 14 1.5 8z" /></svg>
+        Associazione
+      </p>
+      <input class="ui-input h-10 font-display text-base font-bold" aria-label="Nome dell'associazione" maxlength="80"
+        [value]="r.name" [readonly]="ro()" (change)="renameEl(r.id, $any($event.target).value)" />
+    </header>
+
+    <div class="ui-section">
+      <h3 class="ui-section-title">Partecipanti</h3>
+      <ul class="ui-list">
+        @for (p of r.participants; track $index; let i = $index) {
+          <li class="ui-row gap-2.5 py-3">
+            <button type="button" class="self-start rounded-sm font-display text-sm font-bold hover:text-accent-text hover:underline hover:underline-offset-4" (click)="select(p.entityId)">{{ entityName(p.entityId) }}</button>
+            <div class="grid grid-cols-[auto_auto_1fr] items-center gap-2">
+              <select class="ui-select ui-select-sm w-[4.5rem]" aria-label="Minimo" [disabled]="ro()" (change)="setMin(r.id, i, $any($event.target).value)">
+                <option value="" disabled [selected]="p.min === null">min</option>
+                <option value="0" [selected]="p.min === 0">0</option>
+                <option value="1" [selected]="p.min === 1">1</option>
+              </select>
+              <select class="ui-select ui-select-sm w-[4.5rem]" aria-label="Massimo" [disabled]="ro()" (change)="setMax(r.id, i, $any($event.target).value)">
+                <option value="" disabled [selected]="p.max === null">max</option>
+                <option value="1" [selected]="p.max === 1">1</option>
+                <option value="N" [selected]="p.max === 'N'">N</option>
+                <option value="num" [selected]="isNumericMax(p) || numericDraft() === r.id + ':' + i">numero…</option>
+              </select>
+              <input class="ui-input ui-input-sm" placeholder="ruolo (facoltativo)" aria-label="Ruolo" maxlength="40"
+                [value]="p.role ?? ''" [readonly]="ro()" (change)="setRole(r.id, i, $any($event.target).value)" />
+            </div>
+            @if (isNumericMax(p) || numericDraft() === r.id + ':' + i) {
+              <label class="flex items-center gap-2 text-xs font-semibold text-ink-2">
+                massimo
+                <input type="number" min="2" max="1000000" step="1" class="ui-input ui-input-sm w-24" aria-label="Massimo (numero)"
+                  [value]="isNumericMax(p) ? p.max : ''" [readonly]="ro()" (change)="setMaxNumber(r.id, i, $any($event.target).value)" />
+              </label>
+            }
+            <p class="ui-hint text-ink-2">{{ cardHelp(p) }}</p>
+          </li>
+        }
+      </ul>
+    </div>
+
+    @if (ambiguousOneToOne(r)) {
+      <div class="ui-section">
+        <h3 class="ui-section-title">Chiave esterna</h3>
+        <p class="ui-hint -mt-1">È un uno-a-uno simmetrico: scegli in quale tabella va la chiave esterna.</p>
+        <select class="ui-select ui-select-sm" aria-label="Tabella con la chiave esterna" [disabled]="ro()" (change)="setFk(r.id, $any($event.target).value)">
+          @for (p of r.participants; track $index) {
+            <option [value]="p.entityId" [selected]="(r.fkOn ?? r.participants[0].entityId) === p.entityId">in {{ entityName(p.entityId) }}</option>
+          }
+        </select>
+      </div>
+    }
+
+    <div class="ui-section">
+      <div class="ui-section-head">
+        <h3 class="ui-section-title">Attributi</h3>
+        <button type="button" class="ui-btn ui-btn-ghost ui-btn-xs text-accent-text" [disabled]="ro()" (click)="addAttr(r.id)">+ Aggiungi</button>
+      </div>
+      @if (r.attributes.length) {
+        <ul class="ui-list">
+          @for (a of r.attributes; track a.id) {
+            <li class="ui-row">
+              <div class="flex items-center gap-2">
+                <input class="ui-input ui-input-sm" aria-label="Nome dell'attributo" maxlength="80"
+                  [value]="a.name" [readonly]="ro()" (change)="renameEl(a.id, $any($event.target).value)" />
+                <button type="button" class="ui-btn ui-btn-ghost ui-btn-xs ui-btn-icon hover:text-danger-text!" [attr.aria-label]="'Elimina ' + a.name" [disabled]="ro()" (click)="remove([a.id])">
+                  <svg viewBox="0 0 24 24" class="size-3.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                </button>
+              </div>
+              <div class="flex gap-2">
+                <select class="ui-select ui-select-sm w-24 shrink-0" aria-label="Cardinalità dell'attributo" [disabled]="ro()" (change)="setCard(a.id, $any($event.target).value)">
+                  @for (c of cards; track c.value) {
+                    <option [value]="c.value" [selected]="c.value === a.card">{{ c.label }}</option>
+                  }
+                </select>
+                <app-type-picker class="min-w-0 flex-1" [value]="a.type" [disabled]="ro()" (changed)="setType(a.id, $event)" />
+              </div>
+            </li>
+          }
+        </ul>
+      }
+    </div>
+
+    <button type="button" class="ui-btn ui-btn-danger ui-btn-sm self-start" [disabled]="ro()" (click)="remove([r.id])">Elimina associazione</button>
+  } @else if (generalization(); as g) {
+    <header>
+      <p class="ui-kind">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2v6M3 14v-3.5h10V14M8 2L6 4M8 2l2 2" /></svg>
+        Generalizzazione
+      </p>
+      <p class="px-0.5 font-display text-lg font-bold">{{ entityName(g.parentId) }}</p>
+    </header>
+    <div class="ui-section gap-1">
+      <h3 class="ui-section-title mb-1">Figli</h3>
+      @for (e of otherEntities(g); track e.id) {
+        <label class="ui-choice">
+          <input type="checkbox" class="ui-checkbox" [checked]="g.childIds.includes(e.id)" [disabled]="ro()" (change)="toggleChild(g, e.id)" />
+          {{ e.name }}
+        </label>
+      }
+    </div>
+    <fieldset class="ui-fieldset">
+      <legend class="ui-legend">Copertura</legend>
+      <label class="ui-choice"><input type="radio" class="ui-radio" name="total" [checked]="g.total" [disabled]="ro()" (change)="setGen(g, { total: true })" /> Totale (t): ogni {{ entityName(g.parentId) }} è di un figlio</label>
+      <label class="ui-choice"><input type="radio" class="ui-radio" name="total" [checked]="!g.total" [disabled]="ro()" (change)="setGen(g, { total: false })" /> Parziale (p)</label>
+    </fieldset>
+    <fieldset class="ui-fieldset">
+      <legend class="ui-legend">Sovrapposizione</legend>
+      <label class="ui-choice"><input type="radio" class="ui-radio" name="excl" [checked]="g.exclusive" [disabled]="ro()" (change)="setGen(g, { exclusive: true })" /> Esclusiva (e): al massimo un figlio</label>
+      <label class="ui-choice"><input type="radio" class="ui-radio" name="excl" [checked]="!g.exclusive" [disabled]="ro()" (change)="setGen(g, { exclusive: false })" /> Sovrapposta (s)</label>
+    </fieldset>
+    <fieldset class="ui-fieldset gap-2">
+      <legend class="ui-legend">Traduzione nello schema logico</legend>
+      @for (s of strategies; track s.value) {
+        <label class="ui-choice items-start rounded-lg border border-line bg-raised px-3 py-2.5 has-[:checked]:border-accent has-[:checked]:bg-accent-soft">
+          <input type="radio" class="ui-radio mt-0.5" name="strategy" [checked]="(g.strategy ?? 'merge-up') === s.value" [disabled]="ro()" (change)="setGen(g, { strategy: s.value })" />
+          <span><strong class="font-bold">{{ s.label }}</strong><br /><span class="text-xs text-ink-2">{{ s.help }}</span></span>
+        </label>
+      }
+    </fieldset>
+    <button type="button" class="ui-btn ui-btn-danger ui-btn-sm self-start" [disabled]="ro()" (click)="remove([g.id])">Elimina generalizzazione</button>
+  } @else if (attribute(); as found) {
+    <header>
+      <p class="ui-kind">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M2 14l6-6" /><circle cx="10.5" cy="5.5" r="3" /></svg>
+        <span>Attributo di <button type="button" class="ui-link" (click)="select(found.owner.id)">{{ found.owner.name }}</button></span>
+      </p>
+      <input class="ui-input h-10 text-base font-bold" aria-label="Nome dell'attributo" maxlength="80"
+        [value]="found.attribute.name" [readonly]="ro()" (change)="renameEl(found.attribute.id, $any($event.target).value)" />
+    </header>
+    <div class="ui-section">
+      <select class="ui-select ui-select-sm" aria-label="Cardinalità dell'attributo" [disabled]="ro()" (change)="setCard(found.attribute.id, $any($event.target).value)">
+        @for (c of cards; track c.value) {
+          <option [value]="c.value" [selected]="c.value === found.attribute.card">{{ c.label }}</option>
+        }
+      </select>
+      @if (!found.attribute.parts?.length) {
+        <app-type-picker [value]="found.attribute.type" [disabled]="ro()" (changed)="setType(found.attribute.id, $event)" />
+        <p class="ui-hint">Clic sul pallino nel diagramma: entra o esce dall'identificatore. Trascinalo per spostarlo attorno al bordo.</p>
+      }
+    </div>
+    <div class="ui-section">
+      <div class="ui-section-head">
+        <h3 class="ui-section-title">Parti</h3>
+        <button type="button" class="ui-btn ui-btn-ghost ui-btn-xs text-accent-text" aria-label="Aggiungi una parte" [disabled]="ro()" (click)="addPart(found.attribute.id)">+ Aggiungi</button>
+      </div>
+      @if (found.attribute.parts?.length) {
+        <p class="ui-hint -mt-1">Attributo composto: nello schema logico lo sostituiscono le sue parti.</p>
+        <ul class="ui-list">
+          @for (pt of found.attribute.parts; track pt.id) {
+            <li class="ui-row flex-row items-center gap-2 py-2">
+              <input class="ui-input ui-input-sm" aria-label="Nome della parte" maxlength="80"
+                [value]="pt.name" [readonly]="ro()" (change)="renameEl(pt.id, $any($event.target).value)" />
+              <button type="button" class="ui-btn ui-btn-ghost ui-btn-xs ui-btn-icon hover:text-danger-text!" [attr.aria-label]="'Elimina ' + pt.name" [disabled]="ro()" (click)="remove([pt.id])">
+                <svg viewBox="0 0 24 24" class="size-3.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+              </button>
+            </li>
+          }
+        </ul>
+      } @else {
+        <p class="ui-hint -mt-1">Per un attributo composto (es. indirizzo → via, n. civico, CAP) aggiungi le parti, oppure selezionalo e premi <kbd class="ui-kbd">A</kbd>.</p>
+      }
+    </div>
+    <button type="button" class="ui-btn ui-btn-danger ui-btn-sm self-start" [disabled]="ro()" (click)="remove([found.attribute.id])">Elimina attributo</button>
+  } @else if (part(); as fp) {
+    <header>
+      <p class="ui-kind">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="8" cy="8" r="3" /></svg>
+        <span>Parte di <button type="button" class="ui-link" (click)="select(fp.attribute.id)">{{ fp.attribute.name }}</button></span>
+      </p>
+      <input class="ui-input h-10 text-base font-bold" aria-label="Nome della parte" maxlength="80"
+        [value]="fp.part.name" [readonly]="ro()" (change)="renameEl(fp.part.id, $any($event.target).value)" />
+    </header>
+    <div class="ui-section">
+      <label class="ui-choice">
+        <input type="checkbox" class="ui-checkbox" aria-label="Parte opzionale" [checked]="fp.part.card === '0,1'" [disabled]="ro()"
+          (change)="setPartCard(fp.part.id, $any($event.target).checked)" />
+        Opzionale (0,1): può mancare
+      </label>
+      <app-type-picker [value]="fp.part.type" [disabled]="ro()" (changed)="setPartType(fp.part.id, $event)" />
+      <p class="ui-hint">Premi <kbd class="ui-kbd">A</kbd> per aggiungere un'altra parte a «{{ fp.attribute.name }}».</p>
+    </div>
+    <button type="button" class="ui-btn ui-btn-danger ui-btn-sm self-start" [disabled]="ro()" (click)="remove([fp.part.id])">Elimina parte</button>
+  } @else if (store.selection().size > 1) {
+    <div class="flex flex-col gap-3">
+      <p class="font-display text-lg font-bold">{{ store.selection().size }} elementi selezionati</p>
+      <div class="flex flex-wrap gap-2">
+        @if (selectedEntities().length >= 2 && selectedEntities().length <= 4) {
+          <button type="button" class="ui-btn ui-btn-primary ui-btn-sm" [disabled]="ro()" (click)="relate()">Crea associazione</button>
+        }
+        <button type="button" class="ui-btn ui-btn-danger ui-btn-sm" [disabled]="ro()" (click)="store.deleteSelection()">Elimina</button>
+      </div>
+    </div>
+  } @else {
+    <div class="flex flex-col gap-3 text-sm">
+      <p class="font-display text-lg font-bold">Niente selezionato</p>
+      <p class="text-ink-2">Clicca un elemento per modificarlo. Scorciatoie:</p>
+      <ul class="ui-list grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-2.5 px-3.5 py-3.5 text-[0.8125rem] text-ink-2">
+        <li class="contents"><kbd class="ui-kbd justify-self-start">E</kbd><span>nuova entità</span></li>
+        <li class="contents"><kbd class="ui-kbd justify-self-start">R</kbd><span>associazione (o trascina fra due entità)</span></li>
+        <li class="contents"><kbd class="ui-kbd justify-self-start">A</kbd><span>attributo sull'elemento selezionato</span></li>
+        <li class="contents"><kbd class="ui-kbd justify-self-start">G</kbd><span>generalizzazione IS-A</span></li>
+        <li class="contents"><kbd class="ui-kbd justify-self-start">L</kbd><span>sistema il layout</span></li>
+        <li class="contents"><kbd class="ui-kbd justify-self-start">F</kbd><span>adatta alla vista</span></li>
+        <li class="contents"><kbd class="ui-kbd justify-self-start">Ctrl Z</kbd><span>annulla</span></li>
+        <li class="contents"><kbd class="ui-kbd justify-self-start">Shift</kbd><span>+ trascina: seleziona un'area</span></li>
+      </ul>
+    </div>
+  }
+</section>

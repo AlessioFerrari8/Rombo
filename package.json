@@ -1,0 +1,25 @@
+{
+  "name": "rombo",
+  "version": "1.0.0",
+  "description": "Editor di diagrammi entità-relazione (notazione Chen), per Windows, Linux e macOS",
+  "author": "Alessio Ferrari <alessio.ferrari@marconirovereto.it>",
+  "homepage": "https://github.com/AlessioFerrari8/Rombo",
+  "license": "MIT",
+  "private": true,
+  "main": "electron/main.js",
+  "scripts": {
+    "web:install": "npm --prefix web ci",
+    "web:build": "npm --prefix web run build",
+    "start": "npm run web:build && electron .",
+    "dev": "electron .",
+    "dist": "npm run web:build && electron-builder",
+    "dist:linux": "npm run web:build && electron-builder --linux",
+    "dist:win": "npm run web:build && electron-builder --win",
+    "dist:mac": "npm run web:build && electron-builder --mac",
+    "icon": "python3 tools/make-icon.py ."
+  },
+  "devDependencies": {
+    "electron": "^44.7.0",
+    "electron-builder": "^26.0.0"
+  }
+}

@@ -1,0 +1,26 @@
+<section class="ui-panel-body gap-3" aria-label="SQL">
+  @if (sql(); as code) {
+    <div class="flex flex-wrap items-center gap-2">
+      <div class="ui-segmented" role="group" aria-label="Database">
+        <button type="button" class="ui-segment" [class.is-active]="dialect() === 'postgres'" [attr.aria-pressed]="dialect() === 'postgres'" (click)="dialect.set('postgres')">PostgreSQL</button>
+        <button type="button" class="ui-segment" [class.is-active]="dialect() === 'mysql'" [attr.aria-pressed]="dialect() === 'mysql'" (click)="dialect.set('mysql')">MySQL</button>
+      </div>
+      <div class="ml-auto flex gap-2">
+        <button type="button" class="ui-btn ui-btn-sm" (click)="copy()">
+          <svg viewBox="0 0 24 24" class="size-4 text-ink-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2" /></svg>
+          Copia
+        </button>
+        <button type="button" class="ui-btn ui-btn-sm" (click)="download()">
+          <svg viewBox="0 0 24 24" class="size-4 text-ink-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14" /></svg>
+          Scarica .sql
+        </button>
+      </div>
+    </div>
+    <pre class="ui-code max-h-[65vh]"><code>{{ code }}</code></pre>
+  } @else {
+    <div class="ui-callout ui-callout-warning flex-col items-start gap-2.5">
+      <span>Ci sono {{ store.errorCount() }} errori da correggere prima di generare l'SQL.</span>
+      <button type="button" class="ui-btn ui-btn-sm" (click)="store.panelTab.set('problems')">Vedi i problemi</button>
+    </div>
+  }
+</section>

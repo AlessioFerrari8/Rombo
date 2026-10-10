@@ -1,0 +1,13 @@
+<select class="ui-select ui-select-sm min-w-0 flex-1" aria-label="Tipo SQL" [disabled]="disabled()" (change)="setBase($any($event.target).value)">
+  @for (b of bases; track b.base) {
+    <option [value]="b.base" [selected]="b.base === parts().base">{{ b.label }}</option>
+  }
+</select>
+@if (info().params >= 1) {
+  <input type="number" min="1" [attr.max]="info().maxA" class="ui-input ui-input-sm w-16 shrink-0 px-2" aria-label="Lunghezza o cifre"
+    [value]="parts().a ?? info().defaults[0]" [disabled]="disabled()" (change)="setA($any($event.target).value)" />
+}
+@if (info().params === 2) {
+  <input type="number" min="0" max="30" class="ui-input ui-input-sm w-14 shrink-0 px-2" aria-label="Decimali"
+    [value]="parts().b ?? info().defaults[1]" [disabled]="disabled()" (change)="setB($any($event.target).value)" />
+}

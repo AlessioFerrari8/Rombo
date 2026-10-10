@@ -1,0 +1,180 @@
+<svg
+  #svg
+  class="er-canvas h-full w-full"
+  [class.cursor-crosshair]="interactive() && store.tool() !== 'select'"
+  [attr.role]="interactive() ? 'application' : null"
+  [attr.aria-label]="interactive() ? 'Diagramma entità-relazione' : null"
+  [attr.aria-hidden]="interactive() ? null : 'true'"
+  (pointerdown)="onBackgroundDown($event)"
+  (pointermove)="onMove($event)"
+  (pointerup)="onUp($event)"
+  (pointercancel)="onUp($event)"
+  (wheel)="onWheel($event)"
+>
+  <!-- niente griglia nelle anteprime: il pattern ha un id, e con piu' anteprime nella pagina si ripeterebbe -->
+  @if (interactive()) {
+    <defs data-noexport>
+      <pattern id="er-grid" patternUnits="userSpaceOnUse" [attr.width]="gridSize()" [attr.height]="gridSize()" [attr.x]="view().x" [attr.y]="view().y">
+        <circle class="er-grid-dot" cx="1" cy="1" r="1.1" />
+      </pattern>
+    </defs>
+    <rect data-noexport width="100%" height="100%" fill="url(#er-grid)" />
+  }
+
+  <g data-export-root [attr.transform]="transform()">
+    <!-- generalizzazioni -->
+    @for (isa of scene().isas; track isa.id) {
+      <g data-isa (pointerdown)="onShapeDown($event, isa.id)">
+        @for (l of isa.geom.lines; track $index) {
+          @if (isa.selected) {
+            <line data-noexport class="er-selected" [attr.x1]="l[0].x" [attr.y1]="l[0].y" [attr.x2]="l[1].x" [attr.y2]="l[1].y" />
+          }
+          <line class="er-hit-line" [attr.x1]="l[0].x" [attr.y1]="l[0].y" [attr.x2]="l[1].x" [attr.y2]="l[1].y" />
+          <line class="er-isa-line" [attr.x1]="l[0].x" [attr.y1]="l[0].y" [attr.x2]="l[1].x" [attr.y2]="l[1].y" />
+        }
+        <polygon class="er-isa-arrow" [attr.points]="arrow(isa)" />
+        <text class="er-isa-label" [attr.x]="isa.geom.label.x" [attr.y]="isa.geom.label.y">{{ isa.label }}</text>
+      </g>
+    }
+
+    <!-- linee delle associazioni -->
+    @for (l of scene().links; track l.key) {
+      <g (pointerdown)="onShapeDown($event, l.relId)">
+        <polyline class="er-hit-line" [attr.points]="points(l.points)" />
+        <polyline class="er-line" [class.is-optional]="l.optional" [attr.points]="points(l.points)" />
+      </g>
+    }
+
+    <!-- aste degli attributi e barre degli identificatori composti -->
+    @for (a of scene().attributes; track a.id) {
+      <line class="er-line" [attr.x1]="a.geom.from.x" [attr.y1]="a.geom.from.y" [attr.x2]="a.geom.dot.x" [attr.y2]="a.geom.dot.y" />
+    }
+    @for (b of scene().idBars; track b.entityId) {
+      <polyline class="er-line" [attr.points]="points([...b.points, b.end])" />
+      <circle class="er-dot is-key" [attr.cx]="b.end.x" [attr.cy]="b.end.y" r="5" />
+    }
+
+    <!-- associazioni -->
+    @for (r of scene().relationships; track r.id) {
+      <g class="er-appear" [attr.data-rel]="r.name" (pointerdown)="onShapeDown($event, r.id)" (dblclick)="onDblClick($event, r.id)">
+        @if (r.selected) {
+          <polygon data-noexport class="er-selected" [attr.points]="rhombus(r.box, 6)" />
+        }
+        <polygon class="er-rel-shape" [attr.points]="rhombus(r.box, 0)" />
+        @if (r.error) {
+          <polygon data-noexport class="er-error-ring" [attr.points]="rhombus(r.box, 9)" />
+        }
+        <text class="er-name er-name-sm" [attr.x]="r.box.x" [attr.y]="r.box.y">{{ r.name || '…' }}</text>
+        @if (r.kindLabel) {
+          <text class="er-kind" [attr.x]="r.box.x" [attr.y]="r.box.y - r.box.h / 2 - 10">{{ r.kindLabel }}</text>
+        }
+      </g>
+    }
+
+    <!-- entità -->
+    @for (e of scene().entities; track e.id) {
+      <g class="er-appear" [attr.data-entity]="e.name" (pointerdown)="onShapeDown($event, e.id)" (dblclick)="onDblClick($event, e.id)">
+        @if (e.selected) {
+          <rect data-noexport class="er-selected" [attr.x]="e.box.x - e.box.w / 2 - 4" [attr.y]="e.box.y - e.box.h / 2 - 4" [attr.width]="e.box.w + 8" [attr.height]="e.box.h + 8" rx="14" />
+        }
+        <rect class="er-entity-shape" [attr.x]="e.box.x - e.box.w / 2" [attr.y]="e.box.y - e.box.h / 2" [attr.width]="e.box.w" [attr.height]="e.box.h" rx="10" />
+        @if (e.weak) {
+          <rect class="er-entity-weak" [attr.x]="e.box.x - e.box.w / 2 + 5" [attr.y]="e.box.y - e.box.h / 2 + 5" [attr.width]="e.box.w - 10" [attr.height]="e.box.h - 10" rx="6" />
+        }
+        @if (e.error) {
+          <rect data-noexport class="er-error-ring" [attr.x]="e.box.x - e.box.w / 2 - 7" [attr.y]="e.box.y - e.box.h / 2 - 7" [attr.width]="e.box.w + 14" [attr.height]="e.box.h + 14" rx="16" />
+          <g data-noexport>
+            <circle class="er-error-badge" [attr.cx]="e.box.x + e.box.w / 2" [attr.cy]="e.box.y - e.box.h / 2" r="10" />
+            <text class="er-error-badge-text" [attr.x]="e.box.x + e.box.w / 2" [attr.y]="e.box.y - e.box.h / 2">{{ e.issues }}</text>
+          </g>
+        }
+        <text class="er-name" [attr.x]="e.box.x" [attr.y]="e.box.y">{{ e.name || '…' }}</text>
+      </g>
+    }
+
+    <!-- pallini ed etichette degli attributi; i composti hanno l'ovale e le parti -->
+    @for (a of scene().attributes; track a.id) {
+      @if (a.composite; as c) {
+        <g [attr.data-composite]="a.text">
+          @for (p of c.parts; track p.id) {
+            <line class="er-line" [attr.x1]="p.geom.from.x" [attr.y1]="p.geom.from.y" [attr.x2]="p.geom.dot.x" [attr.y2]="p.geom.dot.y" />
+          }
+          @if (a.selected) {
+            <ellipse data-noexport class="er-selected" [attr.cx]="c.center.x" [attr.cy]="c.center.y" [attr.rx]="c.rx + 4" [attr.ry]="c.ry + 4" />
+          }
+          @if (a.error) {
+            <ellipse data-noexport class="er-error-ring" [attr.cx]="c.center.x" [attr.cy]="c.center.y" [attr.rx]="c.rx + 7" [attr.ry]="c.ry + 7" />
+          }
+          <ellipse class="er-composite" [class.is-key]="a.key" [attr.cx]="c.center.x" [attr.cy]="c.center.y" [attr.rx]="c.rx" [attr.ry]="c.ry"
+            (pointerdown)="onShapeDown($event, a.id)" (dblclick)="onDblClick($event, a.id)" />
+          <text class="er-label er-composite-label" text-anchor="middle" [attr.x]="c.center.x" [attr.y]="c.center.y"
+            (pointerdown)="onShapeDown($event, a.id)" (dblclick)="onDblClick($event, a.id)">{{ a.text }}</text>
+          @for (p of c.parts; track p.id) {
+            <g [attr.data-part]="p.text">
+              @if (p.selected) {
+                <circle data-noexport class="er-selected" [attr.cx]="p.geom.dot.x" [attr.cy]="p.geom.dot.y" r="9" />
+              }
+              @if (p.error) {
+                <circle data-noexport class="er-error-ring" [attr.cx]="p.geom.dot.x" [attr.cy]="p.geom.dot.y" r="11" />
+              }
+              <circle class="er-part-dot" [attr.cx]="p.geom.dot.x" [attr.cy]="p.geom.dot.y" r="4" (pointerdown)="onShapeDown($event, p.id)" />
+              <text class="er-label" [attr.x]="p.geom.label.x" [attr.y]="p.geom.label.y" [attr.text-anchor]="p.geom.anchor"
+                (pointerdown)="onShapeDown($event, p.id)" (dblclick)="onDblClick($event, p.id)">{{ p.text }}</text>
+            </g>
+          }
+        </g>
+      } @else {
+        <g [attr.data-attr]="a.text">
+          @if (a.selected) {
+            <circle data-noexport class="er-selected" [attr.cx]="a.geom.dot.x" [attr.cy]="a.geom.dot.y" r="9" />
+          }
+          @if (a.error) {
+            <circle data-noexport class="er-error-ring" [attr.cx]="a.geom.dot.x" [attr.cy]="a.geom.dot.y" r="11" />
+          }
+          <circle class="er-dot" [class.is-key]="a.key" [attr.cx]="a.geom.dot.x" [attr.cy]="a.geom.dot.y" r="5" (pointerdown)="onDotDown($event, a.id, a.ownerId)" />
+          <text class="er-label" [attr.x]="a.geom.label.x" [attr.y]="a.geom.label.y" [attr.text-anchor]="a.geom.anchor" (pointerdown)="onShapeDown($event, a.id)" (dblclick)="onDblClick($event, a.id)">{{ a.text }}</text>
+        </g>
+      }
+    }
+
+    <!-- cardinalità e ruoli -->
+    @for (l of scene().links; track l.key) {
+      <text class="er-card" [class.is-missing]="l.missing" [attr.x]="l.card.x" [attr.y]="l.card.y">{{ l.cardText }}</text>
+      @if (l.role) {
+        <text class="er-label" [attr.text-anchor]="l.roleAnchor" [attr.x]="l.rolePos.x" [attr.y]="l.rolePos.y">{{ l.role }}</text>
+      }
+    }
+
+    @if (ghost(); as gl) {
+      <line data-noexport class="er-ghost-line" [attr.x1]="gl.from.x" [attr.y1]="gl.from.y" [attr.x2]="gl.to.x" [attr.y2]="gl.to.y" />
+    }
+    @if (marquee(); as m) {
+      <rect data-noexport class="er-marquee" [attr.x]="m.x" [attr.y]="m.y" [attr.width]="m.w" [attr.height]="m.h" />
+    }
+  </g>
+</svg>
+
+@if (interactive()) {
+  <div class="ui-btn-group ui-zoom">
+    <button type="button" class="ui-btn ui-btn-sm ui-btn-icon text-base" (click)="zoomBy(1 / 1.2)" aria-label="Rimpicciolisci">−</button>
+    <button type="button" class="ui-btn ui-btn-sm min-w-16 tabular-nums" (click)="fit()" title="Adatta alla vista (F)">{{ zoomPct() }}%</button>
+    <button type="button" class="ui-btn ui-btn-sm ui-btn-icon text-base" (click)="zoomBy(1.2)" aria-label="Ingrandisci">+</button>
+  </div>
+}
+
+@if (editing(); as ed) {
+  <input
+    #renameInput
+    class="ui-input ui-input-sm absolute z-(--z-overlay) w-52 -translate-x-1/2 -translate-y-1/2 shadow-pop"
+    [class.font-display]="!ed.attr"
+    [class.font-sans]="ed.attr"
+    aria-label="Nome"
+    maxlength="80"
+    [style.left.px]="ed.x"
+    [style.top.px]="ed.y"
+    [value]="ed.value"
+    (keydown.enter)="commitRename(renameInput.value)"
+    (keydown.escape)="editing.set(null)"
+    (blur)="commitRename(renameInput.value)"
+  />
+}

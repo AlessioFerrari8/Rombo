@@ -1,0 +1,45 @@
+<dialog #dialog class="ui-modal" aria-labelledby="share-title">
+  <div class="ui-modal-box">
+    <div class="flex items-center gap-3">
+      <span class="grid size-9 shrink-0 place-items-center rounded-full bg-accent-soft text-accent-text">
+        <svg viewBox="0 0 24 24" class="size-[1.125rem]" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 005.66 0l3-3a4 4 0 00-5.66-5.66l-1 1" /><path d="M14 10a4 4 0 00-5.66 0l-3 3a4 4 0 005.66 5.66l1-1" /></svg>
+      </span>
+      <h2 id="share-title" class="ui-modal-title">Condividi in sola lettura</h2>
+    </div>
+    @switch (state()) {
+      @case ('guest') {
+        <p class="ui-modal-body">Per creare un link serve un account: il diagramma deve stare sul server.</p>
+        <a routerLink="/accedi" class="ui-btn ui-btn-primary self-start">Accedi</a>
+      }
+      @case ('loading') {
+        <div class="grid place-items-center py-6 text-ink-3"><span class="ui-spinner"></span></div>
+      }
+      @case ('not-uploaded') {
+        <p class="ui-modal-body">Questo diagramma è solo su questo dispositivo. Caricalo nel tuo account per poterlo condividere.</p>
+        <button type="button" class="ui-btn ui-btn-primary self-start" (click)="upload()">Carica nel mio account</button>
+      }
+      @case ('none') {
+        <p class="ui-modal-body">Chi apre il link vede il diagramma, lo schema logico e l'SQL, ma non può modificarli. Può farsene una copia.</p>
+        <button type="button" class="ui-btn ui-btn-primary self-start" (click)="create()">Crea il link</button>
+      }
+      @case ('active') {
+        <p class="ui-modal-body">Chiunque abbia questo link vede il diagramma aggiornato, in sola lettura.</p>
+        <div class="flex gap-2">
+          <input class="ui-input font-mono text-xs" readonly [value]="link()" aria-label="Link di condivisione" (focus)="$any($event.target).select()" />
+          <button type="button" class="ui-btn ui-btn-primary" (click)="copy()">Copia</button>
+        </div>
+        <button type="button" class="ui-btn ui-btn-danger-ghost ui-btn-sm -ml-2 self-start" (click)="revoke()">Disattiva il link</button>
+      }
+      @case ('error') {
+        <div role="alert" class="ui-callout ui-callout-error">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7.5v5.5M12 16.5h.01" /></svg>
+          <span>{{ message() }}</span>
+        </div>
+      }
+    }
+    <div class="ui-modal-actions">
+      <form method="dialog"><button class="ui-btn">Chiudi</button></form>
+    </div>
+  </div>
+  <form method="dialog" class="ui-modal-backdrop"><button>chiudi</button></form>
+</dialog>

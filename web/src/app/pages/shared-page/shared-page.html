@@ -1,0 +1,40 @@
+<div class="grid h-dvh grid-rows-[auto_1fr] bg-paper">
+  <header class="ui-topbar">
+    <a routerLink="/" class="ui-brand shrink-0" aria-label="Rombo">
+      <svg viewBox="0 0 32 32" class="size-7" aria-hidden="true">
+        <rect x="2" y="9" width="14" height="14" rx="3" fill="none" stroke="currentColor" stroke-width="2.5" class="text-accent" />
+        <path d="M23 6l7 10-7 10-7-10z" fill="currentColor" class="text-highlight" />
+        <path d="M23 6l7 10-7 10-7-10z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" class="text-ink" />
+      </svg>
+      <span class="ui-brand-name hidden sm:inline">Rombo</span>
+    </a>
+    <span class="hidden h-5 w-px shrink-0 bg-line sm:block" aria-hidden="true"></span>
+    <span class="min-w-0 truncate px-1 font-display text-[0.9375rem] font-bold">{{ diagram()?.title }}</span>
+    <span class="ui-badge shrink-0">sola lettura</span>
+    @if (diagram()) {
+      <button type="button" class="ui-btn ui-btn-primary ui-btn-sm ml-auto" (click)="duplicate()">
+        <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2" /></svg>
+        <span class="hidden sm:inline">Duplica nei miei diagrammi</span><span class="sm:hidden">Duplica</span>
+      </button>
+    }
+  </header>
+  @if (errorText(); as msg) {
+    <main class="ui-page grid min-h-0 place-items-center p-6">
+      <div class="ui-sheet flex max-w-md flex-col items-center gap-4 px-8 py-10 text-center">
+        <svg viewBox="0 0 64 48" class="w-20" aria-hidden="true">
+          <rect x="4" y="8" width="56" height="32" rx="8" class="fill-raised stroke-ink" stroke-width="2.5" stroke-dasharray="7 6" />
+          <path d="M24 18l16 12M40 18L24 30" class="stroke-danger" stroke-width="3" stroke-linecap="round" />
+        </svg>
+        <h1 class="font-display text-2xl font-bold">{{ msg }}</h1>
+        <a routerLink="/" class="ui-btn ui-btn-primary">Vai ai miei diagrammi</a>
+      </div>
+    </main>
+  } @else if (diagram()) {
+    <div class="flex min-h-0 flex-col lg:grid lg:grid-cols-[1fr_24rem]">
+      <main class="relative min-h-[50vh] flex-1"><app-canvas /></main>
+      <app-side-panel class="max-h-[45vh] min-h-0 border-t border-line lg:max-h-none lg:border-t-0" />
+    </div>
+  } @else {
+    <main class="grid place-items-center text-ink-3" aria-busy="true"><span class="ui-spinner ui-spinner-lg"></span></main>
+  }
+</div>

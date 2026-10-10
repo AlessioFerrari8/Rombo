@@ -1,0 +1,32 @@
+<div class="grid h-dvh grid-rows-[auto_1fr] bg-paper">
+  <app-top-bar />
+  <div class="flex min-h-0 flex-col lg:grid lg:grid-cols-[auto_1fr_24rem]">
+    @if (!store.readonly()) {
+      <app-palette class="hidden lg:block" />
+    }
+    <main class="relative min-h-[50vh] flex-1">
+      @if (ready()) {
+        <app-canvas />
+      }
+      @if (store.readonly()) {
+        <div role="status" class="ui-float-bar max-w-[calc(100%-1.5rem)] text-xs sm:text-[0.8125rem]">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5" /><path d="M11 18.5h2" /></svg>
+          <span>Su uno schermo stretto il diagramma si può solo guardare: allarga la finestra (almeno 1024 px) per modificarlo.</span>
+        </div>
+      }
+      @if (store.tool() === 'isa') {
+        <div role="status" class="ui-float-bar py-1.5 pr-1.5">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v9M5 21v-5h14v5M12 3l-3 3M12 3l3 3" /></svg>
+          @if (!store.isaDraft()?.parentId) {
+            <span>Clicca l'entità <strong>padre</strong>.</span>
+          } @else {
+            <span>Ora clicca i <strong>figli</strong> ({{ store.isaDraft()?.childIds?.length ?? 0 }} scelti). Invio per creare, Esc per annullare.</span>
+          }
+          <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" [disabled]="!store.isaDraft()?.childIds?.length" (click)="store.finishIsa()">Crea gerarchia</button>
+        </div>
+      }
+    </main>
+    <app-side-panel class="max-h-[45vh] min-h-0 border-t border-line lg:max-h-none lg:border-t-0" />
+  </div>
+</div>
+<app-conflict-dialog />

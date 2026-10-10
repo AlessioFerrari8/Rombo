@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "entities": [
+    { "uuid": "p", "name": "Proprietario", "x": 60, "y": 80, "width": 140, "height": 60, "isParent": false, "isChildren": false, "composedKey": false,
+      "attributes": [ { "uuid": "p1", "parentUUID": "p", "name": "CF", "isPrimaryKey": true, "circleX": 130, "circleY": 40 },
+                      { "uuid": "p2", "parentUUID": "p", "name": "Nome", "isPrimaryKey": false, "circleX": 40, "circleY": 110 } ] },
+    { "uuid": "a", "name": "Auto", "x": 460, "y": 80, "width": 140, "height": 60, "isParent": false, "isChildren": false, "composedKey": false,
+      "attributes": [ { "uuid": "a1", "parentUUID": "a", "name": "Targa", "isPrimaryKey": true, "circleX": 530, "circleY": 40 } ] },
+    { "uuid": "d", "name": "Dipendente", "x": 60, "y": 380, "width": 140, "height": 60, "isParent": false, "isChildren": false, "composedKey": false,
+      "attributes": [ { "uuid": "d1", "parentUUID": "d", "name": "Matricola", "isPrimaryKey": false, "circleX": 130, "circleY": 470 } ] },
+    { "uuid": "i", "name": "Intervento", "x": 460, "y": 380, "width": 140, "height": 60, "isParent": false, "isChildren": false, "composedKey": false,
+      "attributes": [ { "uuid": "i1", "parentUUID": "i", "name": "Codice", "isPrimaryKey": true, "circleX": 530, "circleY": 470 } ] }
+  ],
+  "relationships": [
+    { "uuid": "r1", "name": "possiede", "rhombusX": 330, "rhombusY": 110, "entityUUIDs": ["p", "a"], "cardinals": ["1,N", "1,1"], "attributes": [] },
+    { "uuid": "r2", "name": "subisce", "rhombusX": 530, "rhombusY": 260, "entityUUIDs": ["a", "i"], "cardinals": ["0,N", "1,1"], "attributes": [] },
+    { "uuid": "r3", "name": "fa", "rhombusX": 330, "rhombusY": 410, "entityUUIDs": ["d", "i"], "cardinals": ["0,N", "uno a molti"], "attributes": [] }
+  ],
+  "isaRelations": []
+}
