@@ -209,18 +209,18 @@ describe('parseDiagramFile con schema logico', () => {
 describe('schema logico generato da un ER ai limiti', () => {
   const long = (prefix: string, i: number) => `${prefix}${String(i).padStart(4, '0')}`.padEnd(80, 'x');
 
-  /** Entita' con 200 attributi da 80 caratteri: la chiave, 99 composti da 20 parti, 100 multivalore. */
+  /** Entita' con attributi da 80 caratteri: la chiave, 6 composti da 20 parti (>100 colonne), 160 multivalore. */
   function entity(k: number): Entity {
     const pkName = long(`K${k}_`, 0);
     const attributes: Attribute[] = [{ id: `e${k}a0`, name: pkName, card: '1,1', angle: 0 }];
-    for (let i = 1; i < 100; i++) {
+    for (let i = 1; i < 7; i++) {
       attributes.push({
         id: `e${k}a${i}`, name: long(`C${k}_`, i), card: '1,1', angle: 0,
         // la prima parte si chiama come la chiave: diventa «<attributo>_<parte>», 161 caratteri
         parts: Array.from({ length: 20 }, (_, j) => ({ id: `e${k}a${i}p${j}`, name: j === 0 ? pkName : `p${j}`, card: '1,1' as const })),
       });
     }
-    for (let i = 100; i < 200; i++) attributes.push({ id: `e${k}a${i}`, name: long(`M${k}_`, i), card: '0,N', angle: 0 });
+    for (let i = 7; i < 167; i++) attributes.push({ id: `e${k}a${i}`, name: long(`M${k}_`, i), card: '0,N', angle: 0 });
     return {
       id: `e${k}`, name: long(`Entita${k}_`, k), pos: { x: 0, y: 0 }, attributes,
       primary: { attributeIds: [`e${k}a0`], externalVia: [] }, alternates: [],
@@ -230,7 +230,7 @@ describe('schema logico generato da un ER ai limiti', () => {
   it('resta un file valido dopo serializzazione e rilettura', () => {
     const d: Diagram = {
       version: 1, id: 'big', title: 'Limiti', relationships: [], generalizations: [],
-      entities: [0, 1, 2, 3].map(entity),
+      entities: [0, 1].map(entity), // 2 tabelle + 320 dei multivalore: oltre il vecchio limite di 300
     };
     expect(parseDiagramFile(serializeDiagram(d)).ok).toBe(true);
     const logical = generateLogical(d);
