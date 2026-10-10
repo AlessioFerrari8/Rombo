@@ -121,6 +121,8 @@ describe('pannelli in modo Logico', () => {
     store.apply((d) => renameTable(d, n.ordine, ''));
     f.detectChanges();
     expect(el.querySelector('.ui-callout')!.textContent).toContain('1 errori');
+    expect(el.querySelector('.ui-callout')!.textContent).toContain('prima di esportare lo schema');
+    expect(el.querySelector('.ui-callout')!.textContent).not.toContain('tradurre il diagramma');
     expect(el.querySelector('[data-table]')).toBeNull();
   });
 

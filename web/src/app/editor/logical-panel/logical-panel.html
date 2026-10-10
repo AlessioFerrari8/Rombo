@@ -29,7 +29,7 @@
     }
   } @else {
     <div class="ui-callout ui-callout-warning flex-col items-start gap-2.5">
-      <span>Ci sono {{ store.activeErrorCount() }} errori da correggere prima di tradurre il diagramma.</span>
+      <span>Ci sono {{ store.activeErrorCount() }} errori da correggere prima di {{ store.mode() === 'logical' ? 'esportare lo schema' : 'tradurre il diagramma' }}.</span>
       <button type="button" class="ui-btn ui-btn-sm" (click)="store.panelTab.set('problems')">Vedi i problemi</button>
     </div>
   }

@@ -92,6 +92,36 @@ describe('LogicalProperties', () => {
     expect(store.diagram().logical!.tables).toHaveLength(1);
   });
 
+  it('dopo «Aggiungi colonna» il fuoco va sul nome della nuova colonna', async () => {
+    const { f, store, n, el } = setup();
+    document.body.appendChild(el);
+    store.select([n.cliente]);
+    f.detectChanges();
+    [...el.querySelectorAll('button')].find((b) => b.textContent!.includes('Aggiungi colonna'))!.click();
+    f.detectChanges();
+    await f.whenStable();
+    const names = el.querySelectorAll<HTMLInputElement>('input[aria-label="Nome della colonna"]');
+    expect(names).toHaveLength(3);
+    expect(document.activeElement).toBe(names[2]);
+    el.remove();
+  });
+
+  it('dopo aver eliminato una colonna il fuoco va sulla vicina, poi sul nome della tabella', async () => {
+    const { f, store, n, el } = setup();
+    document.body.appendChild(el);
+    store.select([n.ordine]);
+    f.detectChanges();
+    q<HTMLButtonElement>(el, 'button[aria-label="Elimina la colonna id"]').click();
+    f.detectChanges();
+    await f.whenStable();
+    expect((document.activeElement as HTMLInputElement).value).toBe('cliente_id');
+    q<HTMLButtonElement>(el, 'button[aria-label="Elimina la colonna cliente_id"]').click();
+    f.detectChanges();
+    await f.whenStable();
+    expect(document.activeElement).toBe(q(el, 'input[aria-label="Nome della tabella"]'));
+    el.remove();
+  });
+
   it('riordina le colonne', () => {
     const { f, store, n, el } = setup();
     store.select([n.cliente]);

@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, signal, untracked } from '@angular/core';
+import { Component, ElementRef, Injector, afterNextRender, computed, effect, inject, signal, untracked } from '@angular/core';
 import {
   addColumn, addForeignKey, addTable, checkForeignKey, deleteColumn, deleteForeignKey, deleteTables, moveColumn, removeUnique,
   renameTable, setForeignKeyColumns, toggleUnique, togglePrimaryKey, updateColumn,
@@ -10,6 +10,8 @@ import { TypePicker } from '../type-picker/type-picker';
 @Component({ selector: 'app-logical-properties', templateUrl: './logical-properties.html', imports: [TypePicker] })
 export class LogicalProperties {
   protected readonly store = inject(EditorStore);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
+  private readonly injector = inject(Injector);
   protected readonly ro = computed(() => this.store.readonly());
   protected readonly tables = computed(() => this.store.diagram().logical?.tables ?? []);
   /** La tabella selezionata, o quella della FK selezionata. */
@@ -72,7 +74,13 @@ export class LogicalProperties {
   }
 
   addCol(t: LTable): void {
-    this.store.apply((d) => addColumn(d, t.id).diagram);
+    let id = '';
+    this.store.apply((d) => {
+      const r = addColumn(d, t.id);
+      id = r.id;
+      return r.diagram;
+    });
+    if (id) this.focusAfterRender(`input[data-col-name="${id}"]`);
   }
 
   rename(t: LTable, colId: Id, name: string): void {
@@ -115,7 +123,15 @@ export class LogicalProperties {
   }
 
   removeCol(t: LTable, colId: Id): void {
+    // il pulsante sparisce con la colonna: il fuoco va sulla vicina, o sul nome della tabella
+    const i = t.columns.findIndex((c) => c.id === colId);
+    const next = t.columns[i + 1] ?? t.columns[i - 1];
     this.store.apply((d) => deleteColumn(d, t.id, colId));
+    this.focusAfterRender(next ? `input[data-col-name="${next.id}"]` : 'input[aria-label="Nome della tabella"]');
+  }
+
+  private focusAfterRender(selector: string): void {
+    afterNextRender(() => this.host.nativeElement.querySelector<HTMLElement>(selector)?.focus(), { injector: this.injector });
   }
 
   // --- chiavi esterne ---
