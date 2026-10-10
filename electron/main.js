@@ -1,7 +1,10 @@
 'use strict';
-const { app, BrowserWindow, Menu, protocol, net, shell, session } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, protocol, net, screen, shell, session } = require('electron');
+const fs = require('node:fs/promises');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+const { filesFromArgv, readDiagramFile, validateSavePayload, withDiagramExtension } = require('./files');
+const { loadWindowState, saveWindowState } = require('./window-state');
 
 const SCHEME = 'app';
 const HOST = 'rombo';
@@ -20,6 +23,18 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 let mainWindow = null;
+// file chiesti dal sistema (argv, open-file) prima che la pagina sia pronta a riceverli
+const pendingFiles = [];
+let pendingMenu = null;
+let rendererReady = false;
+let flushing = false;
+let saving = false;
+
+// macOS: doppio clic su un .rombo, anche ad app chiusa (arriva prima di 'ready')
+app.on('open-file', (event, file) => {
+  event.preventDefault();
+  queueFile(file);
+});
 
 function serveApp() {
   protocol.handle(SCHEME, (request) => {
@@ -45,10 +60,98 @@ function isOwnUrl(u) {
   }
 }
 
+function queueFile(file) {
+  pendingFiles.push(file);
+  if (app.isReady() && !mainWindow) createWindow();
+  else void flushFiles();
+  focusWindow();
+}
+
+async function flushFiles() {
+  // uno alla volta e in ordine: l'ultimo file aperto e' quello che resta a schermo
+  if (flushing) return;
+  flushing = true;
+  try {
+    while (rendererReady && mainWindow && pendingFiles.length) {
+      const result = await readDiagramFile(pendingFiles.shift());
+      if (!result.ok) console.warn(`cannot open ${result.name}: ${result.reason}`);
+      mainWindow?.webContents.send('rombo:open-file', result);
+    }
+  } finally {
+    flushing = false;
+  }
+}
+
+function focusWindow() {
+  if (!mainWindow) return;
+  if (mainWindow.isMinimized()) mainWindow.restore();
+  mainWindow.focus();
+}
+
+/** Solo la nostra pagina, nella finestra principale, puo' usare l'IPC. */
+function trustedSender(event) {
+  return !!mainWindow && event.sender === mainWindow.webContents && isOwnUrl(event.senderFrame?.url ?? '');
+}
+
+async function openWithDialog() {
+  const opts = {
+    title: 'Apri diagramma',
+    properties: ['openFile'],
+    filters: [
+      { name: 'Diagrammi Rombo', extensions: ['rombo', 'json'] },
+      { name: 'Tutti i file', extensions: ['*'] },
+    ],
+  };
+  // macOS puo' non avere finestre aperte: dialog libero, la finestra nasce col file
+  const r = mainWindow ? await dialog.showOpenDialog(mainWindow, opts) : await dialog.showOpenDialog(opts);
+  if (!r.canceled && r.filePaths[0]) queueFile(r.filePaths[0]);
+}
+
+async function saveWithDialog(event, payload) {
+  if (!trustedSender(event)) return { ok: false, reason: 'forbidden' };
+  const data = validateSavePayload(payload);
+  if (!data) return { ok: false, reason: 'invalid' };
+  // un dialog alla volta, anche se la pagina insiste
+  if (saving) return { ok: false, reason: 'busy' };
+  saving = true;
+  try {
+    const r = await dialog.showSaveDialog(mainWindow, {
+      title: 'Salva diagramma con nome',
+      defaultPath: path.join(app.getPath('documents'), data.name),
+      filters: [{ name: 'Diagramma Rombo', extensions: ['rombo'] }],
+      properties: ['showOverwriteConfirmation', 'createDirectory'],
+    });
+    if (r.canceled || !r.filePath) return { ok: false, reason: 'canceled' };
+    const file = withDiagramExtension(r.filePath);
+    await fs.writeFile(file, data.text, 'utf8');
+    return { ok: true, name: path.basename(file) };
+  } catch (err) {
+    console.error('save failed:', err);
+    return { ok: false, reason: 'write' };
+  } finally {
+    saving = false;
+  }
+}
+
+function sendMenu(command) {
+  if (rendererReady && mainWindow) {
+    mainWindow.webContents.send('rombo:menu', command);
+    return;
+  }
+  // macOS senza finestre: il comando parte appena la pagina e' pronta
+  pendingMenu = command;
+  if (!mainWindow) createWindow();
+}
+
 function createWindow() {
+  const stateDir = app.getPath('userData');
+  const state = loadWindowState(stateDir, screen.getAllDisplays().map((d) => d.workArea));
+  rendererReady = false;
   mainWindow = new BrowserWindow({
-    width: 1360,
-    height: 860,
+    x: state.x,
+    y: state.y,
+    width: state.width,
+    height: state.height,
     minWidth: 900,
     minHeight: 600,
     show: false,
@@ -63,8 +166,19 @@ function createWindow() {
       spellcheck: false,
     },
   });
-  mainWindow.once('ready-to-show', () => mainWindow.show());
-  mainWindow.on('closed', () => (mainWindow = null));
+  mainWindow.once('ready-to-show', () => {
+    if (state.maximized) mainWindow.maximize();
+    mainWindow.show();
+  });
+  mainWindow.on('close', () => saveWindowState(stateDir, mainWindow));
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+    rendererReady = false;
+  });
+  // ricarica o nuova pagina: il listener della pagina e' sparito, si aspetta un nuovo "ready"
+  mainWindow.webContents.on('did-start-navigation', ({ isMainFrame, isSameDocument }) => {
+    if (isMainFrame && !isSameDocument) rendererReady = false;
+  });
 
   // la pagina non esce mai dalla sua origine: i link esterni vanno al browser
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
@@ -85,6 +199,17 @@ function buildMenu() {
   const isMac = process.platform === 'darwin';
   const template = [
     ...(isMac ? [{ role: 'appMenu' }] : []),
+    {
+      label: 'File',
+      submenu: [
+        { label: 'Nuovo diagramma', accelerator: 'CmdOrCtrl+N', click: () => sendMenu('new') },
+        { label: 'Apri…', accelerator: 'CmdOrCtrl+O', click: () => void openWithDialog() },
+        { type: 'separator' },
+        { label: 'Salva con nome…', accelerator: 'CmdOrCtrl+Shift+S', click: () => sendMenu('save-as') },
+        { type: 'separator' },
+        isMac ? { role: 'close', label: 'Chiudi finestra' } : { role: 'quit', label: 'Esci' },
+      ],
+    },
     { role: 'editMenu' },
     {
       label: 'Vista',
@@ -101,12 +226,21 @@ function buildMenu() {
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
-app.on('second-instance', () => {
-  if (mainWindow) {
-    if (mainWindow.isMinimized()) mainWindow.restore();
-    mainWindow.focus();
-  }
+app.on('second-instance', (_event, argv, workingDirectory) => {
+  // doppio clic su un .rombo con Rombo gia' aperto: il file arriva qui
+  const files = filesFromArgv(argv, workingDirectory);
+  if (files.length) for (const f of files) queueFile(f);
+  else focusWindow();
 });
+
+ipcMain.on('rombo:ready', (event) => {
+  if (!trustedSender(event)) return;
+  rendererReady = true;
+  if (pendingMenu) mainWindow.webContents.send('rombo:menu', pendingMenu);
+  pendingMenu = null;
+  void flushFiles();
+});
+ipcMain.handle('rombo:save-file', saveWithDialog);
 
 app.whenReady().then(() => {
   session.defaultSession.webRequest.onHeadersReceived((details, cb) => {
@@ -116,6 +250,8 @@ app.whenReady().then(() => {
   session.defaultSession.setPermissionRequestHandler((_wc, _perm, cb) => cb(false));
   serveApp();
   buildMenu();
+  // Windows/Linux: file passati all'avvio (doppio clic, "Apri con")
+  pendingFiles.push(...filesFromArgv(process.argv, process.cwd()));
   createWindow();
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

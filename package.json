@@ -16,7 +16,8 @@
     "dist:linux": "npm run web:build && electron-builder --linux",
     "dist:win": "npm run web:build && electron-builder --win",
     "dist:mac": "npm run web:build && electron-builder --mac",
-    "icon": "python3 tools/make-icon.py ."
+    "icon": "python3 tools/make-icon.py .",
+    "test": "node --test \"test/*.test.js\""
   },
   "devDependencies": {
     "electron": "^44.7.0",
