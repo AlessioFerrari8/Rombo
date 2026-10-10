@@ -64,8 +64,9 @@ interface LogicalDiagram { tables: LTable[] }
 
 ## Validazione (`validateLogical`, stessi `Issue` del pannello Problemi)
 
-Errori: nome vuoto, nome tabella duplicato, nome colonna duplicato nella stessa tabella, nome non valido per SQL (usa `ident`), FK con numero colonne ≠ PK di destinazione, FK verso tabella senza PK, tipo SQL non valido (`SQL_TYPE_RE`), nome oltre 60 caratteri.
-Avvisi: tabella senza PK, tabella senza colonne, colonna PK nullable, FK con tipi diversi dalla colonna riferita.
+Errori: nome vuoto, nome tabella duplicato, nome colonna duplicato nella stessa tabella, FK che non punta alla PK (o a un UNIQUE) della tabella di destinazione, tipo SQL non valido (`SQL_TYPE_RE`), nome oltre 60 caratteri.
+Avvisi: tabella senza PK, tabella senza colonne, colonna PK nullable, FK con tipi diversi dalla colonna riferita, nome che non è un identificatore SQL semplice (`ident(nome) !== nome`: il DDL lo quota comunque, quindi non blocca).
+Il numero di colonne di una FK uguale a quello delle colonne riferite è un invariante imposto dai comandi e da `referencesOk`, non una regola di validazione.
 
 Il pannello Problemi mostra i problemi del modo attivo (ER o Logico). `errorCount` riflette il modo attivo.
 
@@ -79,7 +80,8 @@ Il pannello Problemi mostra i problemi del modo attivo (ER o Logico). `errorCoun
   - trascinare la casella la sposta; trascinare da una colonna a un'altra tabella crea una FK (anteprima della freccia durante il gesto).
 - `LogicalProperties` (pannello laterale, **form completo**, percorso da tastiera): nome tabella; elenco colonne con nome, tipo (riusa `type-picker`), PK, NULL, UNIQUE, ordine su/giù, elimina; sezione chiavi esterne con scelta colonne e tabella riferita. Tutto ciò che si fa col mouse sul canvas si fa anche da qui.
 - Palette (a sinistra) in modo Logico: strumento "Tabella" (clic sul canvas per crearla) e selezione. Pulsante "Genera dall'ER" nella barra del modo Logico.
-- Pannelli "Schema logico" e "SQL": usano lo schema a mano se `logical` esiste, altrimenti il derivato attuale. Per lo schema a mano passano dall'adattatore `toTables(logical): LogicalSchema` (id → nomi) e dai formatter esistenti. Con errori di validazione logica: stesso callout "correggi i problemi" già usato.
+- Pannelli "Schema logico" e "SQL" e voci del menu Esporta → Schema **seguono il modo attivo**: in ER mostrano lo schema derivato (come oggi), in Logico quello a mano, passato dall'adattatore `toTables(logical): LogicalSchema` (id → nomi) e dai formatter esistenti. Con errori di validazione del modo attivo: stesso callout "correggi i problemi". (Rispetto alla prima bozza, che li faceva dipendere dall'esistenza di `logical`: così il pannello Problemi e i pannelli schema parlano sempre dello stesso diagramma.)
+- Creazione FK col mouse: si trascina dalla **maniglia** (pallino sul bordo destro della riga) verso un'altra tabella; la FK usa la colonna di partenza e, se la PK di destinazione è composta da N colonne, le N colonne consecutive della tabella di partenza (errore con messaggio se non bastano). Dal form si scelgono le colonne una per una.
 - Export immagine (`exporter.ts`): in modo Logico esporta il canvas logico (PNG/SVG), riusando la pipeline esistente.
 
 ## Compatibilità e sicurezza
