@@ -18,7 +18,7 @@ export interface Clipboard {
 }
 
 /** Ogni comando lavora su una copia: il diagramma di partenza resta intatto (serve all'undo). */
-function edit(d: Diagram, fn: (draft: Diagram) => void): Diagram {
+export function edit(d: Diagram, fn: (draft: Diagram) => void): Diagram {
   const draft = structuredClone(d);
   fn(draft);
   return draft;
