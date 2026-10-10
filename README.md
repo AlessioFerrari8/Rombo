@@ -2,7 +2,9 @@
 
 Editor di diagrammi entità-relazione in notazione Chen, con validazione, schema logico e SQL.
 Versione **desktop** (Windows, Linux, macOS) di DiagrammiER: gira offline, i diagrammi stanno sul
-computer e si scambiano come file (Esporta → JSON, Apri file dalla home). Nessun account, nessun server.
+computer e si scambiano come file `.rombo` (menu File → Salva con nome… / Apri…, oppure doppio clic sul
+file). Un `.rombo` è lo stesso JSON di DiagrammiER: si aprono anche i `.json` di DiagrammiER ed erdrawer.
+Nessun account, nessun server.
 
 ## Installare
 
@@ -22,7 +24,8 @@ Gli installer **non sono firmati**:
 
 ```bash
 npm ci && npm run web:install   # dipendenze (guscio Electron + app Angular in web/)
-npm start                       # compila web/ e apre Rombo
+npm start                       # compila web/ e apre Rombo (npm run dev -- file.rombo apre un file)
+npm test                        # test del guscio (node --test); quelli dell'app: npm --prefix web test
 npm run dist:linux              # release/ (anche dist:win, dist:mac sui rispettivi sistemi)
 ```
 
