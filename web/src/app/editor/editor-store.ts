@@ -8,12 +8,21 @@ import {
 import {
   History, canRedo, canUndo, commit, commitPreview, initHistory, preview, redo, undo,
 } from '../domain/history';
-import { toLogical } from '../domain/logical';
-import { Diagram, Id, Point, entityById, findPart, kindOf, relationshipById } from '../domain/model';
-import { validate } from '../domain/validate';
+import { LogicalSchema, toLogical } from '../domain/logical';
+import {
+  addForeignKey, checkForeignKey, deleteForeignKey, deleteTables, moveTables, replaceLogical, setTablePositions as setLogicalPositions,
+} from '../domain/logical-commands';
+import { generateLogical, toTables } from '../domain/logical-schema';
+import {
+  Diagram, Id, Point, entityById, findForeignKey, findPart, kindOf, logicalKindOf, relationshipById, tableById,
+} from '../domain/model';
+import { Issue, validate } from '../domain/validate';
+import { validateLogical } from '../domain/validate-logical';
 import { computeLayout } from './layout';
+import { computeLogicalLayout } from './logical-layout';
 
-export type Tool = 'select' | 'entity' | 'relationship' | 'attribute' | 'isa';
+export type Tool = 'select' | 'entity' | 'relationship' | 'attribute' | 'isa' | 'table';
+export type Mode = 'er' | 'logical';
 export type PanelTab = 'props' | 'problems' | 'logical' | 'sql';
 export type SaveState = 'saved' | 'saving' | 'error';
 
@@ -30,6 +39,18 @@ export class EditorStore {
   readonly issues = computed(() => validate(this.diagram()));
   readonly errorCount = computed(() => this.issues().filter((i) => i.severity === 'error').length);
   readonly logical = computed(() => (this.errorCount() ? null : toLogical(this.diagram())));
+  readonly mode = signal<Mode>('er');
+  /** true mentre si chiede conferma prima di sostituire lo schema logico con uno nuovo. */
+  readonly confirmRegenerate = signal(false);
+  readonly logicalIssues = computed<Issue[]>(() => validateLogical(this.diagram().logical));
+  readonly activeIssues = computed<Issue[]>(() => (this.mode() === 'logical' ? this.logicalIssues() : this.issues()));
+  readonly activeErrorCount = computed(() => this.activeIssues().filter((i) => i.severity === 'error').length);
+  /** Schema del modo attivo: derivato dall'ER, oppure quello fatto a mano. null se ha errori. */
+  readonly schema = computed<LogicalSchema | null>(() => {
+    if (this.mode() === 'er') return this.logical();
+    if (this.logicalIssues().some((i) => i.severity === 'error')) return null;
+    return toTables(this.diagram().logical ?? { tables: [] });
+  });
   readonly canUndo = computed(() => !this.readonly() && !this.locked() && canUndo(this.history()));
   readonly canRedo = computed(() => !this.readonly() && !this.locked() && canRedo(this.history()));
   readonly saveState = signal<SaveState>('saved');
@@ -55,6 +76,8 @@ export class EditorStore {
     this.selection.set(new Set());
     this.tool.set('select');
     this.isaDraft.set(null);
+    this.mode.set('er');
+    this.confirmRegenerate.set(false);
     this.readonly.set(!!opts.readonly);
     this.loadCount.update((n) => n + 1);
   }
@@ -140,7 +163,9 @@ export class EditorStore {
 
   selectAll(): void {
     const d = this.diagram();
-    this.selection.set(new Set([...d.entities, ...d.relationships, ...d.generalizations].map((x) => x.id)));
+    const ids =
+      this.mode() === 'logical' ? (d.logical?.tables ?? []) : [...d.entities, ...d.relationships, ...d.generalizations];
+    this.selection.set(new Set(ids.map((x) => x.id)));
   }
 
   focus(ids: Id[]): void {
@@ -152,16 +177,30 @@ export class EditorStore {
     if (this.locked()) return;
     const ids = [...this.selection()];
     if (!ids.length) return;
-    this.apply((d) => deleteElements(d, ids));
+    if (this.mode() === 'logical') {
+      const d = this.diagram();
+      const tables = ids.filter((id) => tableById(d, id));
+      const fks = ids.filter((id) => findForeignKey(d, id));
+      this.apply((x) => {
+        let n = deleteTables(x, tables);
+        for (const id of fks) {
+          const f = findForeignKey(n, id); // se la sua tabella e' sparita, la FK e' gia' andata
+          if (f) n = deleteForeignKey(n, f.table.id, id);
+        }
+        return n;
+      });
+    } else {
+      this.apply((d) => deleteElements(d, ids));
+    }
     this.selection.set(new Set());
   }
 
   copy(): void {
-    if (this.selection().size) this.clipboard = copyElements(this.diagram(), this.selection());
+    if (this.mode() === 'er' && this.selection().size) this.clipboard = copyElements(this.diagram(), this.selection());
   }
 
   paste(): void {
-    if (this.locked()) return;
+    if (this.locked() || this.mode() !== 'er') return;
     const clip = this.clipboard;
     if (!clip || !clip.entities.length) return;
     let ids: Id[] = [];
@@ -176,8 +215,85 @@ export class EditorStore {
   nudge(dx: number, dy: number): void {
     if (this.locked()) return;
     const d = this.diagram();
+    if (this.mode() === 'logical') {
+      const tids = [...this.selection()].filter((id) => tableById(d, id));
+      if (tids.length) this.apply((x) => moveTables(x, tids, dx, dy));
+      return;
+    }
     const ids = [...this.selection()].filter((id) => entityById(d, id) || relationshipById(d, id));
     if (ids.length) this.apply((x) => moveElements(x, ids, dx, dy));
+  }
+
+  setMode(m: Mode): void {
+    if (this.mode() === m) return;
+    this.mode.set(m);
+    this.cancelTool();
+    this.selection.set(new Set());
+  }
+
+  requestGenerate(): void {
+    if (this.readonly()) return;
+    if (this.diagram().logical?.tables.length) this.confirmRegenerate.set(true);
+    else void this.generateLogical();
+  }
+
+  async generateLogical(): Promise<void> {
+    if (this.readonly() || this.layingOut()) return;
+    if (this.errorCount()) {
+      this.toasts.show('error', `Correggi i ${this.errorCount()} errori del diagramma ER prima di generare lo schema logico.`);
+      return;
+    }
+    const start = this.diagram();
+    this.layingOut.set(true);
+    try {
+      const generated = generateLogical(start);
+      const pos = await computeLogicalLayout(generated);
+      if (this.diagram() !== start) return; // modificato nel frattempo: non sovrascrivo
+      const placed = { tables: generated.tables.map((t) => ({ ...t, pos: pos[t.id] ?? t.pos })) };
+      // apply() e' bloccato da locked() finche' layingOut() e' vero: scrivo la storia direttamente.
+      this.history.update((h) => commit(h, replaceLogical(start, placed)));
+      this.selection.set(new Set());
+      this.scheduleSave();
+      this.fitRequest.update((n) => n + 1);
+    } catch {
+      this.toasts.show('error', 'Non riesco a generare lo schema logico da questo diagramma.');
+    } finally {
+      this.layingOut.set(false);
+    }
+  }
+
+  async layoutLogical(): Promise<void> {
+    const start = this.diagram();
+    if (this.readonly() || this.layingOut() || !start.logical?.tables.length) return;
+    this.layingOut.set(true);
+    try {
+      const pos = await computeLogicalLayout(start.logical);
+      if (this.diagram() !== start) return;
+      this.history.update((h) => commit(h, setLogicalPositions(start, pos)));
+      this.scheduleSave();
+      this.fitRequest.update((n) => n + 1);
+    } finally {
+      this.layingOut.set(false);
+    }
+  }
+
+  /** Trascinamento dalla maniglia di una colonna verso un'altra tabella: usa N colonne consecutive se la PK ne ha N. */
+  addForeignKeyFromColumn(tableId: Id, columnIndex: number, refTableId: Id): void {
+    const d = this.diagram();
+    const t = tableById(d, tableId);
+    const r = tableById(d, refTableId);
+    if (!t || !r) return;
+    const n = Math.max(1, r.primaryKey.length);
+    const cols = t.columns.slice(columnIndex, columnIndex + n).map((c) => c.id);
+    const err =
+      r.primaryKey.length > 1 && cols.length < n
+        ? `La chiave di «${r.name}» ha ${n} colonne: servono ${n} colonne da «${t.columns[columnIndex]?.name}» in poi.`
+        : checkForeignKey(d, tableId, cols, refTableId);
+    if (err) {
+      this.toasts.show('error', err);
+      return;
+    }
+    this.create((x) => addForeignKey(x, tableId, cols, refTableId));
   }
 
   cancelTool(): void {
@@ -303,6 +419,6 @@ export class EditorStore {
 
   private pruneSelection(): void {
     const d = this.diagram();
-    this.selection.update((s) => new Set([...s].filter((id) => kindOf(d, id) !== null)));
+    this.selection.update((s) => new Set([...s].filter((id) => kindOf(d, id) !== null || logicalKindOf(d, id) !== null)));
   }
 }

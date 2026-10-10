@@ -2,6 +2,9 @@ import { TestBed } from '@angular/core/testing';
 import { addAttribute, addEntity, createDiagram, moveElements } from '../domain/commands';
 import { buildCarrozzeria } from '../domain/fixtures/carrozzeria';
 import { LocalDiagrams } from '../core/local-diagrams';
+import { buildNegozio } from '../domain/fixtures/logical';
+import { tableById } from '../domain/model';
+import { addTable } from '../domain/logical-commands';
 import { EditorStore } from './editor-store';
 
 function setup() {
@@ -234,5 +237,141 @@ describe('EditorStore', () => {
     } finally {
       vi.unstubAllGlobals();
     }
+  });
+});
+
+describe('EditorStore: schema logico', () => {
+  it('parte in modo ER e load riporta in modo ER', () => {
+    const s = setup();
+    s.load(createDiagram());
+    s.setMode('logical');
+    expect(s.mode()).toBe('logical');
+    s.load(createDiagram());
+    expect(s.mode()).toBe('er');
+  });
+
+  it('i problemi e lo schema seguono il modo attivo', () => {
+    const s = setup();
+    s.load(buildNegozio().d);
+    expect(s.schema()!.tables).toHaveLength(0); // ER vuoto: nessuna tabella derivata
+    s.setMode('logical');
+    expect(s.activeErrorCount()).toBe(0);
+    expect(s.schema()!.tables.map((t) => t.name)).toEqual(['Cliente', 'Ordine']);
+    s.apply((d) => ({ ...d, logical: { tables: d.logical!.tables.map((t) => ({ ...t, name: '' })) } }));
+    expect(s.activeErrorCount()).toBeGreaterThan(0);
+    expect(s.schema()).toBeNull();
+    s.setMode('er');
+    expect(s.activeErrorCount()).toBe(0);
+  });
+
+  it('generateLogical crea lo schema in un solo passo di undo', async () => {
+    const s = setup();
+    s.load(buildCarrozzeria());
+    await s.generateLogical();
+    expect(s.diagram().logical!.tables).toHaveLength(5);
+    expect(s.diagram().logical!.tables.every((t) => Number.isFinite(t.pos.x))).toBe(true);
+    s.undo();
+    expect(s.diagram().logical).toBeUndefined();
+  });
+
+  it('generateLogical con errori nell\'ER non crea niente', async () => {
+    const s = setup();
+    s.load(buildCarrozzeria());
+    s.create((d) => addEntity(d, { x: 0, y: 0 }, 'Senza chiave'));
+    await s.generateLogical();
+    expect(s.diagram().logical).toBeUndefined();
+  });
+
+  it('requestGenerate chiede conferma se lo schema esiste gia', async () => {
+    const s = setup();
+    s.load(buildNegozio().d);
+    s.requestGenerate();
+    expect(s.confirmRegenerate()).toBe(true);
+    s.confirmRegenerate.set(false);
+    s.load(buildCarrozzeria());
+    s.requestGenerate();
+    expect(s.confirmRegenerate()).toBe(false);
+    await vi.waitFor(() => expect(s.diagram().logical).toBeDefined());
+  });
+
+  it('rigenerare e poi annullare ripristina lo schema fatto a mano', async () => {
+    const s = setup();
+    const { d } = buildNegozio();
+    s.load({ ...buildCarrozzeria(), logical: d.logical });
+    await s.generateLogical();
+    expect(s.diagram().logical!.tables).toHaveLength(5);
+    s.undo();
+    expect(s.diagram().logical!.tables.map((t) => t.name)).toEqual(['Cliente', 'Ordine']);
+  });
+
+  it('layoutLogical sposta le tabelle in un solo passo', async () => {
+    const s = setup();
+    s.load(buildNegozio().d);
+    s.setMode('logical');
+    await s.layoutLogical();
+    const [c, o] = s.diagram().logical!.tables;
+    expect(o.pos.x).toBeLessThan(c.pos.x);
+    s.undo();
+    expect(s.diagram().logical!.tables[0].pos).toEqual({ x: 0, y: 0 });
+  });
+
+  it('in modo Logico cancella, sposta e seleziona tabelle; undo vale per tutto', () => {
+    const s = setup();
+    const { d, cliente, ordine, fk } = buildNegozio();
+    s.load(d);
+    s.setMode('logical');
+    s.selectAll();
+    expect([...s.selection()].sort()).toEqual([cliente, ordine].sort());
+    s.select([ordine]);
+    s.nudge(16, 0);
+    expect(tableById(s.diagram(), ordine)!.pos.x).toBe(416);
+    s.select([fk]);
+    s.deleteSelection();
+    expect(tableById(s.diagram(), ordine)!.foreignKeys).toEqual([]);
+    s.select([cliente]);
+    s.deleteSelection();
+    expect(s.diagram().logical!.tables).toHaveLength(1);
+    s.undo();
+    expect(s.diagram().logical!.tables).toHaveLength(2);
+    s.undo();
+    s.undo();
+    expect(tableById(s.diagram(), ordine)!.foreignKeys).toHaveLength(1);
+    expect(tableById(s.diagram(), ordine)!.pos.x).toBe(400);
+  });
+
+  it('undo toglie dalla selezione gli id che non esistono piu', () => {
+    const s = setup();
+    s.load(createDiagram());
+    s.setMode('logical');
+    const id = s.create((d) => addTable(d, { x: 0, y: 0 }));
+    expect([...s.selection()]).toEqual([id]);
+    s.undo();
+    expect([...s.selection()]).toEqual([]);
+  });
+
+  it('addForeignKeyFromColumn crea la FK, o spiega perche no', () => {
+    const s = setup();
+    const { d, cliente, ordine, oId } = buildNegozio();
+    s.load(d);
+    s.setMode('logical');
+    const idx = tableById(d, ordine)!.columns.findIndex((c) => c.id === oId);
+    s.addForeignKeyFromColumn(ordine, idx, cliente);
+    expect(tableById(s.diagram(), ordine)!.foreignKeys).toHaveLength(2);
+    expect(s.selection().size).toBe(1);
+    // PK da una colonna ma partendo dall'ultima riga: bastano le colonne disponibili
+    const before = s.diagram();
+    s.addForeignKeyFromColumn(cliente, 0, 'nope');
+    expect(s.diagram()).toBe(before);
+  });
+
+  it('in modo Logico copia/incolla non fanno niente', () => {
+    const s = setup();
+    const { d, cliente } = buildNegozio();
+    s.load(d);
+    s.setMode('logical');
+    s.select([cliente]);
+    s.copy();
+    s.paste();
+    expect(s.diagram().logical!.tables).toHaveLength(2);
   });
 });
