@@ -77,6 +77,15 @@ export interface Generalization {
   strategy?: IsaStrategy;
 }
 
+export interface LColumn { id: Id; name: string; type: string; nullable: boolean }
+export interface LForeignKey { id: Id; columnIds: Id[]; refTableId: Id; refColumnIds: Id[] }
+export interface LCheck { columnId: Id; values: string[] }
+export interface LTable {
+  id: Id; name: string; pos: Point; columns: LColumn[]; primaryKey: Id[];
+  uniques: Id[][]; foreignKeys: LForeignKey[]; checks: LCheck[];
+}
+export interface LogicalDiagram { tables: LTable[] }
+
 export interface Diagram {
   version: 1;
   id: Id;
@@ -84,6 +93,8 @@ export interface Diagram {
   entities: Entity[];
   relationships: Relationship[];
   generalizations: Generalization[];
+  /** Schema logico modificabile a mano; assente nei diagrammi che non l'hanno mai generato. */
+  logical?: LogicalDiagram;
 }
 
 export type Owner = Entity | Relationship;
@@ -134,4 +145,22 @@ export function kindOf(d: Diagram, id: Id): ElementKind | null {
 
 export function isRelationship(o: Owner): o is Relationship {
   return 'participants' in o;
+}
+
+export function tableById(d: Diagram, id: Id): LTable | undefined {
+  return d.logical?.tables.find((t) => t.id === id);
+}
+
+export function findForeignKey(d: Diagram, fkId: Id): { table: LTable; fk: LForeignKey } | undefined {
+  for (const table of d.logical?.tables ?? []) {
+    const fk = table.foreignKeys.find((f) => f.id === fkId);
+    if (fk) return { table, fk };
+  }
+  return undefined;
+}
+
+export function logicalKindOf(d: Diagram, id: Id): 'table' | 'fk' | null {
+  if (tableById(d, id)) return 'table';
+  if (findForeignKey(d, id)) return 'fk';
+  return null;
 }

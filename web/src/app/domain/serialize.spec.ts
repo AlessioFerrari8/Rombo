@@ -1,3 +1,4 @@
+import { Diagram } from './model';
 import { addAttribute, addEntity, addRelationship, createDiagram, updateParticipant } from './commands';
 import { parseDiagramFile, serializeDiagram } from './serialize';
 
@@ -100,5 +101,64 @@ describe('parseDiagramFile', () => {
     const r = parseDiagramFile(JSON.stringify(bad));
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.error).toContain('entities.0.attributes.0.circleX');
+  });
+});
+
+describe('parseDiagramFile con schema logico', () => {
+  const logical = (): NonNullable<Diagram['logical']> => ({
+    tables: [
+      {
+        id: 't1', name: 'Cliente', pos: { x: 0, y: 0 },
+        columns: [{ id: 'c1', name: 'id', type: 'INT', nullable: false }],
+        primaryKey: ['c1'], uniques: [], foreignKeys: [], checks: [],
+      },
+      {
+        id: 't2', name: 'Ordine', pos: { x: 300, y: 0 },
+        columns: [
+          { id: 'c2', name: 'id', type: 'INT', nullable: false },
+          { id: 'c3', name: 'cliente_id', type: 'INT', nullable: true },
+        ],
+        primaryKey: ['c2'], uniques: [['c3']],
+        foreignKeys: [{ id: 'f1', columnIds: ['c3'], refTableId: 't1', refColumnIds: ['c1'] }],
+        checks: [{ columnId: 'c3', values: ['a', 'b'] }],
+      },
+    ],
+  });
+
+  it('rilegge lo schema logico identico', () => {
+    const d = { ...sample(), logical: logical() };
+    const r = parseDiagramFile(serializeDiagram(d));
+    if (!r.ok) throw new Error(r.error);
+    expect(r.diagram.logical).toEqual(d.logical);
+  });
+
+  it('un file senza schema logico resta valido', () => {
+    const r = parseDiagramFile(serializeDiagram(sample()));
+    if (!r.ok) throw new Error(r.error);
+    expect(r.diagram.logical).toBeUndefined();
+  });
+
+  it('rifiuta una FK verso una tabella che non esiste', () => {
+    const l = logical();
+    l.tables[1].foreignKeys[0].refTableId = 'nope';
+    expect(parseDiagramFile(serializeDiagram({ ...sample(), logical: l })).ok).toBe(false);
+  });
+
+  it('rifiuta una PK con una colonna che non esiste', () => {
+    const l = logical();
+    l.tables[0].primaryKey = ['zzz'];
+    expect(parseDiagramFile(serializeDiagram({ ...sample(), logical: l })).ok).toBe(false);
+  });
+
+  it('rifiuta una FK con numero di colonne diverso dalle riferite', () => {
+    const l = logical();
+    l.tables[1].foreignKeys[0].refColumnIds = ['c1', 'c1'];
+    expect(parseDiagramFile(serializeDiagram({ ...sample(), logical: l })).ok).toBe(false);
+  });
+
+  it('rifiuta id di tabella duplicati', () => {
+    const l = logical();
+    l.tables[1].id = 't1';
+    expect(parseDiagramFile(serializeDiagram({ ...sample(), logical: l })).ok).toBe(false);
   });
 });

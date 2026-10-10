@@ -27,9 +27,19 @@ const generalization = z.object({
   id, parentId: id, childIds: z.array(id).min(1), total: z.boolean(), exclusive: z.boolean(),
   strategy: z.enum(['merge-up', 'merge-down', 'replace']).optional(),
 });
+const lcolumn = z.object({ id, name, type: z.string().max(20), nullable: z.boolean() });
+const lforeignKey = z.object({
+  id, columnIds: z.array(id).min(1).max(20), refTableId: id, refColumnIds: z.array(id).min(1).max(20),
+});
+const ltable = z.object({
+  id, name, pos: point, columns: z.array(lcolumn).max(100), primaryKey: z.array(id).max(100),
+  uniques: z.array(z.array(id).max(100)).max(100), foreignKeys: z.array(lforeignKey).max(100),
+  checks: z.array(z.object({ columnId: id, values: z.array(z.string().max(80)).max(50) })).max(100),
+});
 export const diagramSchema = z.object({
   version: z.literal(1), id, title: z.string().max(120),
   entities: z.array(entity).max(500), relationships: z.array(relationship).max(500), generalizations: z.array(generalization).max(200),
+  logical: z.object({ tables: z.array(ltable).max(300) }).optional(),
 });
 
 export type ParseResult =
@@ -38,6 +48,25 @@ export type ParseResult =
 
 export function serializeDiagram(d: Diagram): string {
   return JSON.stringify(d, null, 2);
+}
+
+function logicalReferencesOk(l: NonNullable<Diagram['logical']>): boolean {
+  const tableIds = new Set(l.tables.map((t) => t.id));
+  if (tableIds.size !== l.tables.length) return false;
+  const colsOf = new Map(l.tables.map((t) => [t.id, new Set(t.columns.map((c) => c.id))]));
+  for (const t of l.tables) {
+    const cols = colsOf.get(t.id)!;
+    if (cols.size !== t.columns.length) return false;
+    if (!t.primaryKey.every((c) => cols.has(c))) return false;
+    if (!t.uniques.every((u) => u.every((c) => cols.has(c)))) return false;
+    if (!t.checks.every((ch) => cols.has(ch.columnId))) return false;
+    for (const f of t.foreignKeys) {
+      const ref = colsOf.get(f.refTableId);
+      if (!ref || f.columnIds.length !== f.refColumnIds.length) return false;
+      if (!f.columnIds.every((c) => cols.has(c)) || !f.refColumnIds.every((c) => ref.has(c))) return false;
+    }
+  }
+  return true;
 }
 
 function referencesOk(d: Diagram): boolean {
@@ -52,6 +81,7 @@ function referencesOk(d: Diagram): boolean {
     if (!r.participants.every((p) => entities.has(p.entityId))) return false;
     if (r.fkOn && !entities.has(r.fkOn)) return false;
   }
+  if (d.logical && !logicalReferencesOk(d.logical)) return false;
   return d.generalizations.every((g) => entities.has(g.parentId) && g.childIds.every((c) => entities.has(c)));
 }
 
