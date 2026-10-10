@@ -32,6 +32,8 @@ jobs:
             web/package-lock.json
       - run: npm ci
       - run: npm run web:install
+      - run: npm test
+        if: matrix.os == 'ubuntu-22.04'
       - run: npm --prefix web test -- --watch=false
         if: matrix.os == 'ubuntu-22.04'
       - run: npm run ${{ matrix.script }} -- --publish never
