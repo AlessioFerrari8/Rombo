@@ -6,6 +6,15 @@ computer e si scambiano come file `.rombo` (menu File → Salva con nome… / Ap
 file). Un `.rombo` è lo stesso JSON di DiagrammiER: si aprono anche i `.json` di DiagrammiER ed erdrawer.
 Nessun account, nessun server.
 
+### Schema logico
+
+Accanto al diagramma ER c'è lo **schema logico relazionale**, modificabile a mano: l'interruttore **ER | Logico**
+nella barra cambia modo. Dal modo Logico «Genera dall'ER» crea una copia delle tabelle (una sola volta: poi è
+indipendente dall'ER, e rigenerare chiede conferma); in alternativa si parte da zero con lo strumento Tabella (T).
+Le tabelle si spostano sul foglio, le colonne si modificano dal pannello Proprietà (PK, NULL, UNIQUE, tipo, ordine) e
+le chiavi esterne si creano dal pannello o trascinando il pallino di una colonna su un'altra tabella. Lo schema sta
+nello stesso file `.rombo`; i pannelli «Schema logico» e «SQL» e il menu Esporta lavorano sullo schema del modo attivo.
+
 ## Installare
 
 | Sistema | File |
