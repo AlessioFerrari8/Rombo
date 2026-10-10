@@ -96,6 +96,18 @@ describe('LogicalCanvas', () => {
     expect(el.querySelector('[data-ltable="Cliente"]')).not.toBeNull();
   });
 
+  it('Backspace con una FK selezionata la elimina e lascia le tabelle', () => {
+    const { f, el, store, n } = render();
+    press(el.querySelector('.lg-fk')!);
+    press(el.querySelector('.lg-fk')!, 'pointerup');
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true }));
+    f.detectChanges();
+    expect(tableById(store.diagram(), n.ordine)!.foreignKeys).toEqual([]);
+    expect(el.querySelectorAll('[data-ltable]')).toHaveLength(2);
+    expect(el.querySelectorAll('.lg-fk')).toHaveLength(0);
+    expect(store.selection().size).toBe(0);
+  });
+
   it('senza tabelle mostra come cominciare', () => {
     const f = TestBed.createComponent(Host);
     f.componentInstance.store.load({ ...buildNegozio().d, logical: undefined });

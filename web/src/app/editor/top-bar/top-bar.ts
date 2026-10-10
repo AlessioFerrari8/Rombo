@@ -11,6 +11,7 @@ import { setTitle } from '../../domain/commands';
 import { sceneExportBounds } from '../../domain/scene';
 import { toDDL } from '../../domain/ddl';
 import { formatLogical } from '../../domain/logical';
+import { logicalBounds } from '../../domain/logical-geometry';
 import { serializeDiagram } from '../../domain/serialize';
 import { EditorStore } from '../editor-store';
 import { ShareDialog } from '../share-dialog/share-dialog';
@@ -43,7 +44,8 @@ export class TopBar {
 
   async exportImage(kind: 'png' | 'svg'): Promise<void> {
     const svgEl = this.store.canvasSvg?.();
-    const bounds = sceneExportBounds(this.store.diagram());
+    const d = this.store.diagram();
+    const bounds = this.store.mode() === 'logical' ? (d.logical ? logicalBounds(d.logical) : null) : sceneExportBounds(d);
     if (!svgEl || !bounds) {
       this.toasts.show('info', 'Il diagramma è vuoto: non c\'è niente da esportare.');
       return;
@@ -69,7 +71,7 @@ export class TopBar {
   }
 
   exportText(kind: 'logical' | 'postgres' | 'mysql'): void {
-    const l = this.store.logical();
+    const l = this.store.schema();
     if (!l) return;
     if (kind === 'logical') downloadBlob(new Blob([formatLogical(l)], { type: 'text/plain;charset=utf-8' }), `${this.base()}-schema.txt`);
     else downloadBlob(new Blob([toDDL(l, kind)], { type: 'application/sql' }), `${this.base()}-${kind}.sql`);

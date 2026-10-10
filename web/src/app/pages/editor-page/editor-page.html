@@ -6,7 +6,11 @@
     }
     <main class="relative min-h-[50vh] flex-1">
       @if (ready()) {
-        <app-canvas />
+        @if (store.mode() === 'logical') {
+          <app-logical-canvas />
+        } @else {
+          <app-canvas />
+        }
       }
       @if (store.readonly()) {
         <div role="status" class="ui-float-bar max-w-[calc(100%-1.5rem)] text-xs sm:text-[0.8125rem]">
@@ -30,3 +34,4 @@
   </div>
 </div>
 <app-conflict-dialog />
+<app-regenerate-dialog />

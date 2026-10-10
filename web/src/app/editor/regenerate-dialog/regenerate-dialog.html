@@ -1,0 +1,13 @@
+<dialog #dialog class="ui-modal" aria-labelledby="regen-title" (cancel)="$event.preventDefault(); cancel()">
+  <div class="ui-modal-box max-w-lg">
+    <h2 id="regen-title" class="ui-modal-title">Sostituire lo schema logico?</h2>
+    <p class="ui-modal-body">
+      Lo schema logico di questo diagramma verrà rigenerato dall'ER e le modifiche fatte a mano andranno perse.
+      Puoi sempre annullare con Ctrl+Z.
+    </p>
+    <div class="ui-modal-actions">
+      <button type="button" class="ui-btn" (click)="cancel()">Annulla</button>
+      <button type="button" class="ui-btn ui-btn-primary" (click)="replace()">Sostituisci</button>
+    </div>
+  </div>
+</dialog>

@@ -7,14 +7,16 @@ import { ViewportSize } from '../../core/viewport-size';
 import { Canvas } from '../../editor/canvas/canvas';
 import { ConflictDialog } from '../../editor/conflict-dialog/conflict-dialog';
 import { EditorStore } from '../../editor/editor-store';
+import { LogicalCanvas } from '../../editor/logical-canvas/logical-canvas';
 import { Palette } from '../../editor/palette/palette';
+import { RegenerateDialog } from '../../editor/regenerate-dialog/regenerate-dialog';
 import { SidePanel } from '../../editor/side-panel/side-panel';
 import { TopBar } from '../../editor/top-bar/top-bar';
 
 @Component({
   selector: 'app-editor-page',
   templateUrl: './editor-page.html',
-  imports: [Canvas, ConflictDialog, Palette, SidePanel, TopBar],
+  imports: [Canvas, ConflictDialog, LogicalCanvas, Palette, RegenerateDialog, SidePanel, TopBar],
   providers: [EditorStore],
   host: { '(window:pagehide)': 'store.flush()' },
 })
