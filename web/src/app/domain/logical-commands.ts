@@ -3,6 +3,7 @@ import { newId } from './ids';
 import { DEFAULT_SQL_TYPE, Diagram, Id, LColumn, LTable, LogicalDiagram, Point, tableById } from './model';
 
 const MAX_NAME = 80;
+const MAX_TYPE = 20;
 
 function tablesOf(x: Diagram): LTable[] {
   return (x.logical ??= { tables: [] }).tables;
@@ -71,7 +72,7 @@ export function addColumn(d: Diagram, tableId: Id, name?: string, type: string =
   const diagram = edit(d, (x) => {
     const t = table(x, tableId)!;
     const col: LColumn = {
-      id, name: uniqueIdent(t.columns.map((c) => c.name), name?.trim().slice(0, MAX_NAME) || 'colonna'), type, nullable: true,
+      id, name: uniqueIdent(t.columns.map((c) => c.name), name?.trim().slice(0, MAX_NAME) || 'colonna'), type: type.slice(0, MAX_TYPE), nullable: true,
     };
     t.columns.push(col);
   });
@@ -85,7 +86,7 @@ export function updateColumn(
     const c = table(x, tableId)?.columns.find((col) => col.id === colId);
     if (!c) return;
     if (patch.name !== undefined) c.name = patch.name.trim().slice(0, MAX_NAME);
-    if (patch.type !== undefined) c.type = patch.type;
+    if (patch.type !== undefined) c.type = patch.type.slice(0, MAX_TYPE);
     if (patch.nullable !== undefined) c.nullable = patch.nullable;
   });
 }

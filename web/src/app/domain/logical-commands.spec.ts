@@ -139,4 +139,15 @@ describe('comandi dello schema logico', () => {
     const x = replaceLogical(createDiagram(), d.logical!);
     expect(x.logical!.tables).toHaveLength(2);
   });
+
+  it('tronca il tipo a 20 caratteri cosi il file resta valido', () => {
+    const { d, ordine, oCliente } = buildNegozio();
+    const lungo = 'DECIMAL(10,2) UNSIGNED ZEROFILL';
+    const a = addColumn(d, ordine, 'x', lungo);
+    expect(tableById(a.diagram, ordine)!.columns.at(-1)!.type).toHaveLength(20);
+    expect(valid(a.diagram)).toBe(true);
+    const u = updateColumn(d, ordine, oCliente, { type: lungo });
+    expect(tableById(u, ordine)!.columns[1].type).toHaveLength(20);
+    expect(valid(u)).toBe(true);
+  });
 });
