@@ -10,7 +10,7 @@ export class SqlPanel {
   private readonly toasts = inject(Toasts);
   protected readonly dialect = signal<Dialect>('postgres');
   protected readonly sql = computed(() => {
-    const l = this.store.logical();
+    const l = this.store.schema();
     return l ? toDDL(l, this.dialect()) : null;
   });
 

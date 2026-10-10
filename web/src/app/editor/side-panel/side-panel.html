@@ -4,8 +4,8 @@
       <button type="button" role="tab" class="ui-tab" [class.is-active]="store.panelTab() === t.id" [attr.aria-selected]="store.panelTab() === t.id" (click)="store.panelTab.set(t.id)">
         {{ t.label }}
         @if (t.id === 'problems') {
-          @if (store.errorCount()) {
-            <span class="ui-badge ui-badge-error">{{ store.errorCount() }}</span>
+          @if (store.activeErrorCount()) {
+            <span class="ui-badge ui-badge-error">{{ store.activeErrorCount() }}</span>
           } @else if (warnings()) {
             <span class="ui-badge ui-badge-warning">{{ warnings() }}</span>
           }
@@ -15,7 +15,9 @@
   </div>
   <div class="min-h-0 flex-1 overflow-y-auto" role="tabpanel">
     @switch (store.panelTab()) {
-      @case ('props') { <app-properties /> }
+      @case ('props') {
+        @if (store.mode() === 'logical') { <app-logical-properties /> } @else { <app-properties /> }
+      }
       @case ('problems') { <app-problems /> }
       @case ('logical') { <app-logical-panel /> }
       @case ('sql') { <app-sql-panel /> }

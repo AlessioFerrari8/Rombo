@@ -1,6 +1,9 @@
+import { Type } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { addEntity } from '../domain/commands';
 import { buildCarrozzeria } from '../domain/fixtures/carrozzeria';
+import { buildNegozio } from '../domain/fixtures/logical';
+import { renameTable } from '../domain/logical-commands';
 import { EditorStore } from './editor-store';
 import { LogicalPanel } from './logical-panel/logical-panel';
 import { Problems } from './problems/problems';
@@ -88,5 +91,54 @@ describe('pannelli', () => {
     const opt = el.querySelector<HTMLInputElement>('input[aria-label="Parte opzionale"]')!;
     opt.click();
     expect(parts()[1].card).toBe('0,1');
+  });
+});
+
+describe('pannelli in modo Logico', () => {
+  function setup<T>(cmp: Type<T>) {
+    TestBed.configureTestingModule({ providers: [EditorStore] });
+    const store = TestBed.inject(EditorStore);
+    const n = buildNegozio();
+    store.load(n.d);
+    store.setMode('logical');
+    const f = TestBed.createComponent(cmp);
+    f.detectChanges();
+    return { f, store, n, el: f.nativeElement as HTMLElement };
+  }
+
+  it('lo schema logico mostra le tabelle fatte a mano', () => {
+    const { el } = setup(LogicalPanel);
+    expect(el.querySelector('[data-table="Ordine"]')!.textContent).toContain('cliente_id→CLIENTE');
+  });
+
+  it("l'SQL contiene la FK dello schema a mano", () => {
+    const { el } = setup(SqlPanel);
+    expect(el.querySelector('pre')!.textContent).toContain('REFERENCES "Cliente" ("id")');
+  });
+
+  it('con errori il pannello Schema mostra il callout e non il testo', () => {
+    const { f, store, n, el } = setup(LogicalPanel);
+    store.apply((d) => renameTable(d, n.ordine, ''));
+    f.detectChanges();
+    expect(el.querySelector('.ui-callout')!.textContent).toContain('1 errori');
+    expect(el.querySelector('[data-table]')).toBeNull();
+  });
+
+  it('il pannello Problemi elenca quelli del modo Logico', () => {
+    const { f, store, n, el } = setup(Problems);
+    store.apply((d) => renameTable(d, n.ordine, ''));
+    f.detectChanges();
+    expect(el.textContent).toContain('Una tabella non ha un nome');
+    expect(el.textContent).not.toContain('identificatore');
+  });
+
+  it('senza tabelle lo schema dice come cominciare', () => {
+    TestBed.configureTestingModule({ providers: [EditorStore] });
+    const store = TestBed.inject(EditorStore);
+    store.load({ ...buildNegozio().d, logical: undefined });
+    store.setMode('logical');
+    const f = TestBed.createComponent(LogicalPanel);
+    f.detectChanges();
+    expect((f.nativeElement as HTMLElement).textContent).toContain('Nessuna tabella');
   });
 });

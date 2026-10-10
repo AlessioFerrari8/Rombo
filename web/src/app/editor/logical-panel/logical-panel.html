@@ -1,5 +1,5 @@
 <section class="ui-panel-body gap-3" aria-label="Schema logico">
-  @if (store.logical(); as l) {
+  @if (store.schema(); as l) {
     <div class="flex gap-2">
       <button type="button" class="ui-btn ui-btn-sm" (click)="copy()">
         <svg viewBox="0 0 24 24" class="size-4 text-ink-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2" /><path d="M16 8V6a2 2 0 00-2-2H6a2 2 0 00-2 2v8a2 2 0 002 2h2" /></svg>
@@ -10,6 +10,9 @@
         Scarica .txt
       </button>
     </div>
+    @if (!l.tables.length) {
+      <p class="ui-hint">Nessuna tabella{{ store.mode() === 'logical' ? ': generala dall\'ER o aggiungine una a mano.' : '.' }}</p>
+    }
     <ul class="ui-list font-mono text-[0.8125rem]">
       @for (t of l.tables; track t.name) {
         <li class="ui-row block leading-relaxed break-words" [attr.data-table]="t.name">
@@ -26,7 +29,7 @@
     }
   } @else {
     <div class="ui-callout ui-callout-warning flex-col items-start gap-2.5">
-      <span>Ci sono {{ store.errorCount() }} errori da correggere prima di tradurre il diagramma.</span>
+      <span>Ci sono {{ store.activeErrorCount() }} errori da correggere prima di tradurre il diagramma.</span>
       <button type="button" class="ui-btn ui-btn-sm" (click)="store.panelTab.set('problems')">Vedi i problemi</button>
     </div>
   }

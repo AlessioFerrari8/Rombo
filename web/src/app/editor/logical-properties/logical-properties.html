@@ -1,0 +1,111 @@
+<section class="ui-panel-body" aria-label="Proprietà della tabella">
+  @if (table(); as t) {
+    <header>
+      <p class="ui-kind">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="11" rx="2" /><path d="M1.5 6h13" /></svg>
+        Tabella
+      </p>
+      <input class="ui-input h-10 font-display text-base font-bold" aria-label="Nome della tabella" maxlength="80"
+        [value]="t.name" [readonly]="ro()" (change)="renameTable(t, $any($event.target).value)" />
+    </header>
+
+    <div class="ui-section">
+      <div class="ui-section-head">
+        <h3 class="ui-section-title">Colonne</h3>
+        <button type="button" class="ui-btn ui-btn-ghost ui-btn-xs text-accent-text" [disabled]="ro()" (click)="addCol(t)">+ Aggiungi colonna</button>
+      </div>
+      <p class="ui-hint -mt-1">Chiave primaria · Può essere NULL · Univoca.</p>
+      @if (!t.columns.length) {
+        <p class="rounded-xl border border-dashed border-line-strong/60 px-3 py-4 text-center text-[0.8125rem] text-ink-2">Nessuna colonna: usa «+ Aggiungi colonna».</p>
+      } @else {
+        <ul class="ui-list">
+          @for (c of t.columns; track c.id; let first = $first; let last = $last) {
+            <li class="ui-row">
+              <div class="flex items-center gap-2">
+                <input class="ui-input ui-input-sm" aria-label="Nome della colonna" maxlength="80"
+                  [value]="c.name" [readonly]="ro()" (change)="rename(t, c.id, $any($event.target).value)" />
+                <button type="button" class="ui-btn ui-btn-ghost ui-btn-xs ui-btn-icon" [attr.aria-label]="'Sposta su la colonna ' + c.name" [disabled]="ro() || first" (click)="move(t, c.id, -1)">
+                  <svg viewBox="0 0 24 24" class="size-3.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 15l6-6 6 6" /></svg>
+                </button>
+                <button type="button" class="ui-btn ui-btn-ghost ui-btn-xs ui-btn-icon" [attr.aria-label]="'Sposta giù la colonna ' + c.name" [disabled]="ro() || last" (click)="move(t, c.id, 1)">
+                  <svg viewBox="0 0 24 24" class="size-3.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6" /></svg>
+                </button>
+                <button type="button" class="ui-btn ui-btn-ghost ui-btn-xs ui-btn-icon hover:text-danger-text!" [attr.aria-label]="'Elimina la colonna ' + c.name" [disabled]="ro()" (click)="removeCol(t, c.id)">
+                  <svg viewBox="0 0 24 24" class="size-3.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+                </button>
+              </div>
+              <app-type-picker [value]="c.type" [disabled]="ro()" (changed)="setType(t, c.id, $event)" />
+              <div class="flex flex-wrap gap-x-4 gap-y-1 text-[0.8125rem]">
+                <label class="ui-choice"><input type="checkbox" class="ui-checkbox" [attr.aria-label]="'Chiave primaria: ' + c.name" [checked]="t.primaryKey.includes(c.id)" [disabled]="ro()" (change)="togglePk(t, c.id)" /><span>PK</span></label>
+                <label class="ui-choice"><input type="checkbox" class="ui-checkbox" [attr.aria-label]="'Può essere NULL: ' + c.name" [checked]="c.nullable" [disabled]="ro()" (change)="setNullable(t, c.id, $any($event.target).checked)" /><span>NULL</span></label>
+                <label class="ui-choice"><input type="checkbox" class="ui-checkbox" [attr.aria-label]="'Univoca: ' + c.name" [checked]="isUnique(t, c.id)" [disabled]="ro()" (change)="toggleUq(t, c.id)" /><span>UNIQUE</span></label>
+              </div>
+            </li>
+          }
+        </ul>
+      }
+      @for (u of compositeUniques(t); track u.index) {
+        <p class="flex items-center gap-2 text-[0.8125rem]">
+          <span class="min-w-0 flex-1">UNIQUE ({{ u.label }})</span>
+          <button type="button" class="ui-btn ui-btn-ghost ui-btn-xs" [disabled]="ro()" (click)="removeUq(t, u.index)">Togli</button>
+        </p>
+      }
+    </div>
+
+    <div class="ui-section">
+      <h3 class="ui-section-title">Chiavi esterne</h3>
+      @for (f of t.foreignKeys; track f.id) {
+        <div class="ui-row" [class.is-active]="selectedFk() === f.id">
+          <div class="flex items-center gap-2">
+            <button type="button" class="min-w-0 flex-1 text-left font-mono text-[0.8125rem]" (click)="selectFk(f.id)">{{ fkLabel(t, f) }}</button>
+            <button type="button" data-del-fk class="ui-btn ui-btn-ghost ui-btn-xs hover:text-danger-text!" [disabled]="ro()" [attr.aria-label]="'Elimina la chiave esterna ' + fkLabel(t, f)" (click)="removeFk(t, f.id)">Elimina</button>
+          </div>
+          @for (rc of f.columnIds; track $index; let i = $index) {
+            <select class="ui-select ui-select-sm" [attr.aria-label]="'Colonna ' + (i + 1) + ' della chiave esterna'" [disabled]="ro()" (change)="setFkColumn(t, f, i, $any($event.target).value)">
+              @for (c of t.columns; track c.id) {
+                <option [value]="c.id" [selected]="c.id === rc">{{ c.name }}</option>
+              }
+            </select>
+          }
+        </div>
+      }
+      @if (tables().length) {
+        <select class="ui-select ui-select-sm" aria-label="Tabella riferita" [disabled]="ro()" (change)="pickRef($any($event.target).value)">
+          <option value="" [selected]="!draftRef()">Nuova chiave esterna verso…</option>
+          @for (r of tables(); track r.id) {
+            <option [value]="r.id" [selected]="draftRef() === r.id">{{ r.name }}</option>
+          }
+        </select>
+      }
+      @if (draftRef()) {
+        @for (pk of refPk(); track pk.id; let i = $index) {
+          <select class="ui-select ui-select-sm" [attr.aria-label]="'Colonna per ' + pk.name" [disabled]="ro()" (change)="pickDraftCol(i, $any($event.target).value)">
+            <option value="" [selected]="!draftCols()[i]">Colonna per {{ pk.name }}…</option>
+            @for (c of t.columns; track c.id) {
+              <option [value]="c.id" [selected]="draftCols()[i] === c.id">{{ c.name }}</option>
+            }
+          </select>
+        }
+        @if (draftError(); as err) {
+          <p class="ui-hint text-danger-text">{{ err }}</p>
+        }
+        <button type="button" data-add-fk class="ui-btn ui-btn-sm" [disabled]="ro() || !canAddFk()" (click)="addFk(t)">Aggiungi chiave esterna</button>
+      }
+    </div>
+
+    <button type="button" data-del-table class="ui-btn ui-btn-sm hover:text-danger-text!" [disabled]="ro()" (click)="removeTable(t)">Elimina tabella</button>
+  } @else {
+    <header>
+      <p class="ui-kind">Schema logico</p>
+      <p class="text-[0.8125rem] text-ink-2">Seleziona una tabella sul foglio, oppure sceglila qui.</p>
+    </header>
+    @if (tables().length) {
+      <ul class="ui-list">
+        @for (x of tables(); track x.id) {
+          <li class="ui-row"><button type="button" class="w-full text-left font-bold" (click)="pick(x.id)">{{ x.name || 'senza nome' }}</button></li>
+        }
+      </ul>
+    }
+    <button type="button" class="ui-btn ui-btn-sm" [disabled]="ro()" (click)="newTable()">+ Nuova tabella</button>
+  }
+</section>

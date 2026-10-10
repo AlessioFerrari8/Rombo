@@ -1,19 +1,19 @@
 <section class="ui-panel-body gap-3" aria-label="Problemi">
-  @if (!store.issues().length) {
+  @if (!store.activeIssues().length) {
     <div class="flex flex-col items-center gap-2 px-2 py-10 text-center">
       <span class="mb-1 grid size-14 place-items-center rounded-full bg-success-soft text-success-text">
         <svg viewBox="0 0 24 24" class="size-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 12.5l4 4 8-9" /></svg>
       </span>
       <p class="font-display text-lg font-bold">Nessun problema</p>
-      <p class="text-sm text-ink-2">Il diagramma è pronto per lo schema logico.</p>
+      <p class="text-sm text-ink-2">{{ store.mode() === 'logical' ? 'Lo schema logico è pronto per l\'esportazione.' : 'Il diagramma è pronto per lo schema logico.' }}</p>
       <button type="button" class="ui-btn ui-btn-primary ui-btn-sm mt-2" (click)="store.panelTab.set('logical')">Vedi lo schema logico</button>
     </div>
   } @else {
     <p class="text-[0.8125rem] text-ink-2">
-      <strong class="font-extrabold text-danger-text">{{ store.errorCount() }} errori</strong> · <strong class="font-extrabold text-warning-text">{{ warnings() }} avvisi</strong>. Clicca per andare all'elemento.
+      <strong class="font-extrabold text-danger-text">{{ store.activeErrorCount() }} errori</strong> · <strong class="font-extrabold text-warning-text">{{ warnings() }} avvisi</strong>. Clicca per andare all'elemento.
     </p>
     <ul class="flex flex-col gap-2">
-      @for (i of store.issues(); track $index) {
+      @for (i of store.activeIssues(); track $index) {
         <li>
           <!-- alert-error resta solo come aggancio per i test (panels.spec.ts) -->
           <button type="button" class="ui-issue" [attr.data-severity]="i.severity" [class.alert-error]="i.severity === 'error'" (click)="store.focus(i.targetIds)">

@@ -9,7 +9,7 @@ export class LogicalPanel {
   protected readonly store = inject(EditorStore);
   private readonly toasts = inject(Toasts);
   protected readonly text = computed(() => {
-    const l = this.store.logical();
+    const l = this.store.schema();
     return l ? formatLogical(l) : '';
   });
 
