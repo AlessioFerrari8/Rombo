@@ -34,7 +34,7 @@ jobs:
       - run: npm run web:install
       - run: npm --prefix web test -- --watch=false
         if: matrix.os == 'ubuntu-22.04'
-      - run: npm run ${{ matrix.script }}
+      - run: npm run ${{ matrix.script }} -- --publish never
         env:
           # nessun certificato: installer non firmati
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
