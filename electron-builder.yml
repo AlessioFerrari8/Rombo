@@ -39,7 +39,7 @@ linux:
   category: Development
   synopsis: Editor di diagrammi entità-relazione
   description: Editor di diagrammi entità-relazione in notazione Chen, con validazione, schema logico e SQL. Funziona offline.
-  maintainer: Alessio Ferrari <alessio.ferrari@marconirovereto.it>
+  maintainer: Alessio Ferrari <alessioferrari374@gmail.com>
   target:
     - { target: AppImage, arch: [x64] }
     - { target: deb, arch: [x64] }
