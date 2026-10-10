@@ -895,3 +895,15 @@
 @keyframes er-pop { from { opacity: 0; transform: scale(0.96); } }
 
 .er-name-sm { font-size: 14px; }
+
+/* schema logico: caselle delle tabelle */
+.lg-head { fill: var(--er-rel); stroke: none; }
+.lg-sep { stroke: var(--er-ink); stroke-width: 1.5; }
+.lg-col { font-family: var(--font-sans); font-size: 13px; font-weight: 600; fill: var(--er-ink); dominant-baseline: central; }
+.lg-col.is-pk { font-weight: 800; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+.lg-null { opacity: 0.6; }
+.lg-type { font-family: var(--font-sans); font-size: 11.5px; font-weight: 600; fill: var(--er-ink); opacity: 0.6; text-anchor: end; dominant-baseline: central; }
+.lg-icon { fill: none; stroke: var(--er-ink); stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.lg-arrow { fill: var(--er-ink); stroke: var(--er-ink); stroke-width: 1; stroke-linejoin: round; }
+.lg-handle { fill: var(--er-paper); stroke: var(--er-select); stroke-width: 2; cursor: crosshair; opacity: 0; }
+.lg-table-g:hover .lg-handle, .lg-table-g.is-selected .lg-handle { opacity: 1; }

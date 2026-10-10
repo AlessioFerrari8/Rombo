@@ -1,0 +1,109 @@
+<svg
+  #svg
+  class="er-canvas h-full w-full"
+  [class.cursor-crosshair]="store.tool() !== 'select'"
+  role="application"
+  aria-label="Schema logico"
+  (pointerdown)="onBackgroundDown($event)"
+  (pointermove)="onMove($event)"
+  (pointerup)="onUp($event)"
+  (pointercancel)="onUp($event)"
+  (wheel)="onWheel($event)"
+>
+  <defs data-noexport>
+    <pattern id="lg-grid" patternUnits="userSpaceOnUse" [attr.width]="gridSize()" [attr.height]="gridSize()" [attr.x]="view().x" [attr.y]="view().y">
+      <circle class="er-grid-dot" cx="1" cy="1" r="1.1" />
+    </pattern>
+  </defs>
+  <rect data-noexport width="100%" height="100%" fill="url(#lg-grid)" />
+
+  <g data-export-root [attr.transform]="transform()">
+    <!-- frecce delle chiavi esterne, sotto le tabelle -->
+    @for (e of edges(); track e.id) {
+      <g class="lg-fk" (pointerdown)="onEdgeDown($event, e.id)">
+        @if (e.selected) {
+          <polyline data-noexport class="er-selected" [attr.points]="e.line" />
+        }
+        <polyline class="er-hit-line" [attr.points]="e.line" />
+        <polyline class="er-line" [attr.points]="e.line" />
+        <polygon class="lg-arrow" [attr.points]="e.head" />
+      </g>
+    }
+
+    @for (b of tables(); track b.t.id) {
+      <g class="er-appear lg-table-g" [class.is-selected]="b.selected" [attr.data-ltable]="b.t.name" (pointerdown)="onTableDown($event, b.t.id)">
+        @if (b.selected) {
+          <rect data-noexport class="er-selected" [attr.x]="b.rect.x - 4" [attr.y]="b.rect.y - 4" [attr.width]="b.rect.w + 8" [attr.height]="b.rect.h + 8" rx="12" />
+        }
+        @if (b.error) {
+          <rect data-noexport class="er-error-ring" [attr.x]="b.rect.x - 7" [attr.y]="b.rect.y - 7" [attr.width]="b.rect.w + 14" [attr.height]="b.rect.h + 14" rx="14" />
+        }
+        <rect class="er-entity-shape" [attr.x]="b.rect.x" [attr.y]="b.rect.y" [attr.width]="b.rect.w" [attr.height]="b.rect.h" rx="8" />
+        <path class="lg-head" [attr.d]="headPath(b.rect)" />
+        <line class="lg-sep" [attr.x1]="b.rect.x" [attr.y1]="b.rect.y + HEADER_H" [attr.x2]="b.rect.x + b.rect.w" [attr.y2]="b.rect.y + HEADER_H" />
+        <text class="er-name" [attr.x]="b.rect.x + b.rect.w / 2" [attr.y]="b.rect.y + HEADER_H / 2" (dblclick)="onDblClickTable($event, b.t.id)">{{ b.t.name || '…' }}</text>
+        @for (r of b.rows; track r.c.id; let i = $index) {
+          <g [attr.data-lcol]="r.c.name" (dblclick)="onDblClickColumn($event, b.t.id, r.c.id)">
+            <rect class="er-hit" [attr.x]="b.rect.x" [attr.y]="r.y - ROW_H / 2" [attr.width]="b.rect.w" [attr.height]="ROW_H" />
+            @if (r.pk) {
+              <g class="lg-icon" [attr.transform]="'translate(' + (b.rect.x + 10) + ' ' + (r.y - 6) + ')'">
+                <circle cx="4" cy="6" r="2.6" /><path d="M6.6 6H12M10 6v3" />
+              </g>
+            } @else if (r.fk) {
+              <g class="lg-icon" [attr.transform]="'translate(' + (b.rect.x + 10) + ' ' + (r.y - 6) + ')'">
+                <path d="M1 6h9M7 3l3 3-3 3" />
+              </g>
+            }
+            <text class="lg-col" [class.is-pk]="r.pk" [attr.x]="b.rect.x + 34" [attr.y]="r.y">{{ r.c.name }}@if (r.c.nullable) {<tspan class="lg-null">*</tspan>}</text>
+            <text class="lg-type" [attr.x]="b.rect.x + b.rect.w - 14" [attr.y]="r.y">{{ r.c.type }}</text>
+            <circle data-noexport class="lg-handle" [attr.cx]="b.rect.x + b.rect.w" [attr.cy]="r.y" r="5" (pointerdown)="onHandleDown($event, b.t.id, i)">
+              <title>Trascina su un'altra tabella per creare una chiave esterna</title>
+            </circle>
+          </g>
+        }
+      </g>
+    }
+
+    @if (ghost(); as gl) {
+      <line data-noexport class="er-ghost-line" [attr.x1]="gl.from.x" [attr.y1]="gl.from.y" [attr.x2]="gl.to.x" [attr.y2]="gl.to.y" />
+    }
+  </g>
+</svg>
+
+@if (!tables().length) {
+  <div class="pointer-events-none absolute inset-0 grid place-items-center p-6">
+    <div class="pointer-events-auto flex max-w-sm flex-col items-center gap-3 rounded-2xl border border-line bg-raised px-6 py-7 text-center shadow-float">
+      <p class="font-display text-lg font-bold">Nessuna tabella</p>
+      <p class="text-sm text-ink-2">Genera lo schema logico dal diagramma ER oppure parti da zero con lo strumento Tabella (<kbd class="ui-kbd">T</kbd>).</p>
+      @if (!store.readonly()) {
+        <button type="button" class="ui-btn ui-btn-primary ui-btn-sm" (click)="store.requestGenerate()">Genera dall'ER</button>
+      }
+    </div>
+  </div>
+} @else if (!store.readonly()) {
+  <div class="ui-float-bar py-1.5 pr-1.5">
+    <span>Schema logico</span>
+    <button type="button" class="ui-btn ui-btn-sm" [disabled]="store.layingOut()" (click)="store.requestGenerate()">Genera dall'ER</button>
+  </div>
+}
+
+<div class="ui-btn-group ui-zoom">
+  <button type="button" class="ui-btn ui-btn-sm ui-btn-icon text-base" (click)="zoomBy(1 / 1.2)" aria-label="Rimpicciolisci">−</button>
+  <button type="button" class="ui-btn ui-btn-sm min-w-16 tabular-nums" (click)="fit()" title="Adatta alla vista (F)">{{ zoomPct() }}%</button>
+  <button type="button" class="ui-btn ui-btn-sm ui-btn-icon text-base" (click)="zoomBy(1.2)" aria-label="Ingrandisci">+</button>
+</div>
+
+@if (editing(); as ed) {
+  <input
+    #renameInput
+    class="ui-input ui-input-sm absolute z-(--z-overlay) w-52 -translate-x-1/2 -translate-y-1/2 shadow-pop"
+    aria-label="Nome"
+    maxlength="80"
+    [style.left.px]="ed.x"
+    [style.top.px]="ed.y"
+    [value]="ed.value"
+    (keydown.enter)="commitRename(renameInput.value)"
+    (keydown.escape)="editing.set(null)"
+    (blur)="commitRename(renameInput.value)"
+  />
+}
