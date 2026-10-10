@@ -1,5 +1,6 @@
 import { Component, DestroyRef, effect, inject, input, signal, untracked } from '@angular/core';
 import { Router } from '@angular/router';
+import { DesktopBridge } from '../../core/desktop-bridge';
 import { LocalDiagrams } from '../../core/local-diagrams';
 import { Toasts } from '../../core/toasts';
 import { ViewportSize } from '../../core/viewport-size';
@@ -34,7 +35,13 @@ export class EditorPage {
     effect(() => {
       if (this.ready()) this.store.readonly.set(!this.size.wide());
     });
-    inject(DestroyRef).onDestroy(() => void this.store.flush());
+    // "Salva con nome" del menu File salva il diagramma di questo editor
+    const desktop = inject(DesktopBridge);
+    desktop.setCurrent(() => this.store.diagram());
+    inject(DestroyRef).onDestroy(() => {
+      desktop.setCurrent(null);
+      void this.store.flush();
+    });
   }
 
   private async open(id: string): Promise<void> {

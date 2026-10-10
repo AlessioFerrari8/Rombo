@@ -72,7 +72,7 @@
       <li>
         <button type="button" class="ui-menu-item" (click)="exportJson()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z" /><path d="M14 3v5h5" /></svg>
-          File diagramma (.er.json)
+          File diagramma ({{ nativeSave ? '.rombo' : '.er.json' }})
         </button>
       </li>
       <li class="ui-menu-title">Schema</li>

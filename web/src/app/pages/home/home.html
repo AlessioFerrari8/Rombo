@@ -37,7 +37,7 @@
         <label class="ui-btn has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-focus">
           <svg viewBox="0 0 24 24" class="size-4 text-ink-2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7a2 2 0 012-2h4l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H6a2 2 0 01-2-2z" /></svg>
           Apri file…
-          <input type="file" class="sr-only" accept=".json,application/json" (change)="openFile($event)" />
+          <input type="file" class="sr-only" [accept]="accept" (change)="openFile($event)" />
         </label>
       </div>
     </div>

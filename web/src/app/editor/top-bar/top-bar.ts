@@ -3,6 +3,7 @@ import { isDesktop } from '../../core/platform';
 import { Component, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ThemeService } from '../../core/theme';
+import { DesktopBridge } from '../../core/desktop-bridge';
 import { downloadBlob, slugify } from '../../core/download';
 import { Sync } from '../../core/sync';
 import { Toasts } from '../../core/toasts';
@@ -22,6 +23,9 @@ export class TopBar {
   protected readonly theme = inject(ThemeService);
   protected readonly sync = inject(Sync);
   private readonly toasts = inject(Toasts);
+  private readonly bridge = inject(DesktopBridge);
+  /** Sul desktop il file diagramma e' un .rombo salvato col dialog nativo. */
+  protected readonly nativeSave = this.bridge.available;
   protected readonly exporting = signal(false);
 
   rename(value: string): void {
@@ -57,6 +61,10 @@ export class TopBar {
   }
 
   exportJson(): void {
+    if (this.nativeSave) {
+      void this.bridge.saveAs(this.store.diagram());
+      return;
+    }
     downloadBlob(new Blob([serializeDiagram(this.store.diagram())], { type: 'application/json' }), `${this.base()}.er.json`);
   }
 
