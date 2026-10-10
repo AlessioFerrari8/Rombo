@@ -8,7 +8,9 @@ export type IssueCode =
   | 'identifier-cycle' | 'isa-cycle' | 'isa-child-has-identifier' | 'invalid-sql-type' | 'merge-down-partial'
   | 'isolated-entity' | 'generic-relationship-name' | 'multivalued-attribute' | 'isa-default-strategy'
   | 'isa-mixed-strategies' | 'text-in-key' | 'name-too-long' | 'composite-one-part' | 'multivalued-composite'
-  | 'duplicate-part';
+  | 'duplicate-part'
+  | 'empty-table-name' | 'empty-column-name' | 'duplicate-column' | 'invalid-identifier' | 'empty-table'
+  | 'no-table-key' | 'nullable-key' | 'fk-target-not-key' | 'fk-type-mismatch';
 
 export interface Issue {
   severity: Severity;
