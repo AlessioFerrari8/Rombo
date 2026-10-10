@@ -58,6 +58,10 @@ export class LogicalCanvas {
   });
   readonly gridSize = computed(() => GRID * this.view().zoom);
   readonly zoomPct = computed(() => Math.round(this.view().zoom * 100));
+  readonly generateHint = computed(() => {
+    const n = this.store.errorCount();
+    return n ? `Correggi prima ${n === 1 ? "l'errore" : `i ${n} errori`} del diagramma ER` : 'Crea lo schema logico dal diagramma ER';
+  });
 
   private gesture: Gesture | null = null;
   private userMoved = false;
@@ -244,7 +248,9 @@ export class LogicalCanvas {
       this.ghost.set(null);
       const l = this.logical();
       const target = l && tableAt(l, this.world(ev));
-      if (target) this.store.addForeignKeyFromColumn(g.tableId, g.row, target.id);
+      // la maniglia sta sul bordo della tabella: un clic senza trascinare la ritroverebbe qui sotto.
+      // Le FK verso la tabella stessa si fanno dal pannello.
+      if (target && target.id !== g.tableId) this.store.addForeignKeyFromColumn(g.tableId, g.row, target.id);
     }
   }
 

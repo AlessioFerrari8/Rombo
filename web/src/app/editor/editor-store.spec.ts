@@ -5,6 +5,7 @@ import { LocalDiagrams } from '../core/local-diagrams';
 import { buildNegozio } from '../domain/fixtures/logical';
 import { tableById } from '../domain/model';
 import { addTable } from '../domain/logical-commands';
+import { Toasts } from '../core/toasts';
 import { EditorStore } from './editor-store';
 
 function setup() {
@@ -292,6 +293,31 @@ describe('EditorStore: schema logico', () => {
     s.requestGenerate();
     expect(s.confirmRegenerate()).toBe(false);
     await vi.waitFor(() => expect(s.diagram().logical).toBeDefined());
+  });
+
+  it('requestGenerate con errori nell\'ER non chiede conferma e avvisa', () => {
+    const s = setup();
+    const toasts = TestBed.inject(Toasts);
+    const show = vi.spyOn(toasts, 'show');
+    s.load(buildNegozio().d);
+    s.create((d) => addEntity(d, { x: 0, y: 0 }, 'Senza chiave'));
+    s.requestGenerate();
+    expect(s.confirmRegenerate()).toBe(false);
+    expect(show).toHaveBeenCalledWith('error', expect.stringContaining('errori del diagramma ER'));
+  });
+
+  it('layoutLogical che fallisce avvisa e non lascia il canvas bloccato', async () => {
+    const s = setup();
+    const toasts = TestBed.inject(Toasts);
+    const show = vi.spyOn(toasts, 'show');
+    const { d } = buildNegozio();
+    // una FK verso una tabella che non c'e' manda in errore il layout
+    const broken = { ...d, logical: { tables: d.logical!.tables.map((t) => ({ ...t, foreignKeys: t.foreignKeys.map((f) => ({ ...f, refTableId: 'nope' })) })) } };
+    s.load(broken);
+    s.setMode('logical');
+    await s.layoutLogical();
+    expect(s.layingOut()).toBe(false);
+    expect(show).toHaveBeenCalledWith('error', expect.stringContaining('disporre'));
   });
 
   it('rigenerare e poi annullare ripristina lo schema fatto a mano', async () => {

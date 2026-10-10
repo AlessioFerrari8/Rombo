@@ -233,6 +233,10 @@ export class EditorStore {
 
   requestGenerate(): void {
     if (this.readonly()) return;
+    if (this.errorCount()) {
+      this.showErErrorsToast();
+      return;
+    }
     if (this.diagram().logical?.tables.length) this.confirmRegenerate.set(true);
     else void this.generateLogical();
   }
@@ -240,7 +244,7 @@ export class EditorStore {
   async generateLogical(): Promise<void> {
     if (this.readonly() || this.layingOut()) return;
     if (this.errorCount()) {
-      this.toasts.show('error', `Correggi i ${this.errorCount()} errori del diagramma ER prima di generare lo schema logico.`);
+      this.showErErrorsToast();
       return;
     }
     const start = this.diagram();
@@ -262,6 +266,10 @@ export class EditorStore {
     }
   }
 
+  private showErErrorsToast(): void {
+    this.toasts.show('error', `Correggi i ${this.errorCount()} errori del diagramma ER prima di generare lo schema logico.`);
+  }
+
   async layoutLogical(): Promise<void> {
     const start = this.diagram();
     if (this.readonly() || this.layingOut() || !start.logical?.tables.length) return;
@@ -272,6 +280,8 @@ export class EditorStore {
       this.history.update((h) => commit(h, setLogicalPositions(start, pos)));
       this.scheduleSave();
       this.fitRequest.update((n) => n + 1);
+    } catch {
+      this.toasts.show('error', 'Non riesco a disporre le tabelle di questo schema logico.');
     } finally {
       this.layingOut.set(false);
     }

@@ -7,6 +7,10 @@ import { Id, LForeignKey, LTable, findForeignKey, tableById } from '../../domain
 import { EditorStore } from '../editor-store';
 import { TypePicker } from '../type-picker/type-picker';
 
+/** Gli id vengono dai file: nel selettore vanno protetti (jsdom non ha CSS.escape, ripiego su " e \). */
+const cssEscape = (s: string): string =>
+  typeof CSS !== 'undefined' && CSS.escape ? CSS.escape(s) : s.replace(/["\\]/g, '\\$&');
+
 @Component({ selector: 'app-logical-properties', templateUrl: './logical-properties.html', imports: [TypePicker] })
 export class LogicalProperties {
   protected readonly store = inject(EditorStore);
@@ -80,7 +84,7 @@ export class LogicalProperties {
       id = r.id;
       return r.diagram;
     });
-    if (id) this.focusAfterRender(`input[data-col-name="${id}"]`);
+    if (id) this.focusAfterRender(`input[data-col-name="${cssEscape(id)}"]`);
   }
 
   rename(t: LTable, colId: Id, name: string): void {
@@ -127,7 +131,7 @@ export class LogicalProperties {
     const i = t.columns.findIndex((c) => c.id === colId);
     const next = t.columns[i + 1] ?? t.columns[i - 1];
     this.store.apply((d) => deleteColumn(d, t.id, colId));
-    this.focusAfterRender(next ? `input[data-col-name="${next.id}"]` : 'input[aria-label="Nome della tabella"]');
+    this.focusAfterRender(next ? `input[data-col-name="${cssEscape(next.id)}"]` : 'input[aria-label="Nome della tabella"]');
   }
 
   private focusAfterRender(selector: string): void {

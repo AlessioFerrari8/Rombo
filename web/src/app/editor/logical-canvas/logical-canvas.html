@@ -76,14 +76,14 @@
       <p class="font-display text-lg font-bold">Nessuna tabella</p>
       <p class="text-sm text-ink-2">Genera lo schema logico dal diagramma ER oppure parti da zero con lo strumento Tabella (<kbd class="ui-kbd">T</kbd>).</p>
       @if (!store.readonly()) {
-        <button type="button" class="ui-btn ui-btn-primary ui-btn-sm" (click)="store.requestGenerate()">Genera dall'ER</button>
+        <button type="button" class="ui-btn ui-btn-primary ui-btn-sm" [disabled]="store.layingOut() || store.errorCount() > 0" [title]="generateHint()" (click)="store.requestGenerate()">Genera dall'ER</button>
       }
     </div>
   </div>
 } @else if (!store.readonly()) {
   <div class="ui-float-bar py-1.5 pr-1.5">
     <span>Schema logico</span>
-    <button type="button" class="ui-btn ui-btn-sm" [disabled]="store.layingOut()" (click)="store.requestGenerate()">Genera dall'ER</button>
+    <button type="button" class="ui-btn ui-btn-sm" [disabled]="store.layingOut() || store.errorCount() > 0" [title]="generateHint()" (click)="store.requestGenerate()">Genera dall'ER</button>
   </div>
 }
 

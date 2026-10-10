@@ -1,6 +1,8 @@
 import { Component, inject } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { buildNegozio } from '../../domain/fixtures/logical';
+import { addEntity } from '../../domain/commands';
+import { rowY, tableRect } from '../../domain/logical-geometry';
 import { tableById } from '../../domain/model';
 import { EditorStore } from '../editor-store';
 import { LogicalCanvas } from './logical-canvas';
@@ -22,6 +24,11 @@ function render() {
 function press(target: Element, type = 'pointerdown') {
   const Ctor = (globalThis.PointerEvent ?? MouseEvent) as typeof PointerEvent;
   target.dispatchEvent(new Ctor(type, { bubbles: true, clientX: 0, clientY: 0, pointerId: 1 }));
+}
+
+function pressAt(target: Element, type: string, x: number, y: number) {
+  const Ctor = (globalThis.PointerEvent ?? MouseEvent) as typeof PointerEvent;
+  target.dispatchEvent(new Ctor(type, { bubbles: true, clientX: x, clientY: y, pointerId: 1 }));
 }
 
 describe('LogicalCanvas', () => {
@@ -116,5 +123,47 @@ describe('LogicalCanvas', () => {
     const el = f.nativeElement as HTMLElement;
     expect(el.textContent).toContain('Nessuna tabella');
     expect([...el.querySelectorAll('button')].some((b) => b.textContent!.includes("Genera dall'ER"))).toBe(true);
+  });
+
+  it('un clic sulla maniglia FK senza trascinare non crea una FK verso la tabella stessa', () => {
+    const { f, el, store, n } = render();
+    const t = tableById(store.diagram(), n.cliente)!;
+    const r = tableRect(t);
+    const x = r.x + r.w;
+    const y = rowY(t, 0);
+    const handle = el.querySelectorAll('[data-ltable="Cliente"] .lg-handle')[0];
+    pressAt(handle, 'pointerdown', x, y);
+    pressAt(el.querySelector('svg')!, 'pointerup', x, y);
+    f.detectChanges();
+    expect(tableById(store.diagram(), n.cliente)!.foreignKeys).toEqual([]);
+    // trascinata su un'altra tabella invece la crea
+    const o = tableRect(tableById(store.diagram(), n.ordine)!);
+    pressAt(handle, 'pointerdown', x, y);
+    pressAt(el.querySelector('svg')!, 'pointerup', o.x + o.w / 2, o.y + o.h / 2);
+    expect(tableById(store.diagram(), n.cliente)!.foreignKeys.map((k) => k.refTableId)).toEqual([n.ordine]);
+  });
+
+  it('«Genera dall\'ER» e disabilitato se l\'ER ha errori', () => {
+    const { f, el, store } = render();
+    const button = () => [...el.querySelectorAll('button')].find((b) => b.textContent!.includes("Genera dall'ER"))!;
+    expect(button().disabled).toBe(false);
+    store.create((d) => addEntity(d, { x: 0, y: 0 }, 'Senza chiave'));
+    f.detectChanges();
+    expect(store.errorCount()).toBeGreaterThan(0);
+    expect(button().disabled).toBe(true);
+    expect(button().title).toContain('Correggi');
+  });
+
+  it('«Genera dall\'ER» senza tabelle e disabilitato se l\'ER ha errori', () => {
+    const f = TestBed.createComponent(Host);
+    const store = f.componentInstance.store;
+    store.load({ ...buildNegozio().d, logical: undefined });
+    store.create((d) => addEntity(d, { x: 0, y: 0 }, 'Senza chiave'));
+    store.setMode('logical');
+    f.detectChanges();
+    const el = f.nativeElement as HTMLElement;
+    const button = [...el.querySelectorAll('button')].find((b) => b.textContent!.includes("Genera dall'ER"))!;
+    expect(button.disabled).toBe(true);
+    expect(button.title).toContain('Correggi');
   });
 });

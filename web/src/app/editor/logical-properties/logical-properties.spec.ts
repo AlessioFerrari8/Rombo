@@ -122,6 +122,26 @@ describe('LogicalProperties', () => {
     el.remove();
   });
 
+  it('sposta il fuoco anche con id di colonna che contengono le virgolette', async () => {
+    TestBed.configureTestingModule({ providers: [EditorStore] });
+    const store = TestBed.inject(EditorStore);
+    const n = buildNegozio();
+    const quoted = (id: string) => JSON.stringify(`${id}"x`).slice(1, -1);
+    const text = JSON.stringify(n.d).replaceAll(n.oId, quoted(n.oId)).replaceAll(n.oCliente, quoted(n.oCliente));
+    store.load(JSON.parse(text));
+    store.setMode('logical');
+    store.select([n.ordine]);
+    const f = TestBed.createComponent(LogicalProperties);
+    const el = f.nativeElement as HTMLElement;
+    document.body.appendChild(el);
+    f.detectChanges();
+    q<HTMLButtonElement>(el, 'button[aria-label="Elimina la colonna id"]').click();
+    f.detectChanges();
+    await f.whenStable();
+    expect((document.activeElement as HTMLInputElement).value).toBe('cliente_id');
+    el.remove();
+  });
+
   it('riordina le colonne', () => {
     const { f, store, n, el } = setup();
     store.select([n.cliente]);
