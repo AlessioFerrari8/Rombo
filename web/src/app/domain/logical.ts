@@ -190,7 +190,11 @@ function flatten(d: Diagram, notes: string[]): { entities: FlatEntity[]; relatio
 }
 
 function uniqueCol(cols: Column[], name: string): string {
-  const taken = new Set(cols.map((c) => c.name.toLowerCase()));
+  return freeName(new Set(cols.map((c) => c.name.toLowerCase())), name);
+}
+
+/** taken: nomi gia' usati, in minuscolo. */
+function freeName(taken: Set<string>, name: string): string {
   if (!taken.has(name.toLowerCase())) return name;
   for (let i = 2; ; i++) {
     const n = `${name}_${i}`;
@@ -257,8 +261,13 @@ export function toLogical(d: Diagram): LogicalSchema {
     tables.push(t);
     return t;
   };
+  // nomi (minuscoli) delle colonne di ogni tabella: rifare il Set a ogni colonna costa O(n^2) sulle tabelle grandi
+  const takenOf = new Map<Table, Set<string>>();
   const addCol = (t: Table, c: Column): string => {
-    const name = uniqueCol(t.columns, c.name);
+    let taken = takenOf.get(t);
+    if (!taken) takenOf.set(t, (taken = new Set(t.columns.map((x) => x.name.toLowerCase()))));
+    const name = freeName(taken, c.name);
+    taken.add(name.toLowerCase());
     t.columns.push({ ...c, name });
     return name;
   };
