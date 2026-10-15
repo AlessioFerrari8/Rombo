@@ -5,6 +5,7 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const { filesFromArgv, readDiagramFile, validateSavePayload, withDiagramExtension } = require('./files');
 const { loadWindowState, saveWindowState } = require('./window-state');
+const { RELEASES_PAGE, checkForUpdate } = require('./updates');
 
 const SCHEME = 'app';
 const HOST = 'rombo';
@@ -195,6 +196,30 @@ function createWindow() {
   void mainWindow.loadURL(`${SCHEME}://${HOST}/`);
 }
 
+/** Chiede a GitHub se c'e' una versione piu' nuova; `manual` mostra anche "aggiornato" ed errori. */
+async function checkUpdates(manual) {
+  const result = await checkForUpdate(app.getVersion());
+  if (result.status === 'available') {
+    const { response } = await dialog.showMessageBox(mainWindow ?? undefined, {
+      type: 'info',
+      title: 'Aggiornamento disponibile',
+      message: `È disponibile Rombo ${result.version}`,
+      detail: `Stai usando la versione ${app.getVersion()}. Scarica il nuovo installer dalla pagina delle release.`,
+      buttons: ['Scarica', 'Più tardi'],
+      defaultId: 0,
+      cancelId: 1,
+    });
+    if (response === 0) void shell.openExternal(RELEASES_PAGE);
+  } else if (manual) {
+    await dialog.showMessageBox(mainWindow ?? undefined, {
+      type: result.status === 'current' ? 'info' : 'warning',
+      title: 'Aggiornamenti',
+      message: result.status === 'current' ? 'Rombo è aggiornato' : 'Impossibile controllare gli aggiornamenti',
+      detail: result.status === 'current' ? `Versione ${app.getVersion()}.` : 'Controlla la connessione e riprova.',
+    });
+  }
+}
+
 function buildMenu() {
   const isMac = process.platform === 'darwin';
   const template = [
@@ -222,6 +247,10 @@ function buildMenu() {
       ],
     },
     { role: 'windowMenu' },
+    {
+      label: 'Aiuto',
+      submenu: [{ label: 'Cerca aggiornamenti…', click: () => void checkUpdates(true) }],
+    },
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
@@ -253,6 +282,7 @@ app.whenReady().then(() => {
   // Windows/Linux: file passati all'avvio (doppio clic, "Apri con")
   pendingFiles.push(...filesFromArgv(process.argv, process.cwd()));
   createWindow();
+  setTimeout(() => void checkUpdates(false), 5000);
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
