@@ -1,10 +1,10 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import {
-  addAttribute, addAttributePart, addRelationship, deleteElements, rename, setAlternates, setExternalVia, setFkOn,
+  addAttribute, addAttributePart, addRelationship, deleteElements, rename, setAlternates, setExternalVia, setFkOn, setWeak,
   toggleIdentifierAttribute, updateAttribute, updateGeneralization, updateParticipant, updatePart,
 } from '../../domain/commands';
 import {
-  AttrCard, Entity, Generalization, Id, IsaStrategy, Participant, Relationship, entityById, findAttribute, findPart,
+  AttrCard, Entity, Generalization, Id, IsaStrategy, Participant, Relationship, entityById, isWeak, findAttribute, findPart,
   generalizationById, relationshipById,
 } from '../../domain/model';
 import { EditorStore } from '../editor-store';
@@ -109,6 +109,19 @@ export class Properties {
           valid: mine.min === 1 && mine.max === 1,
         };
       });
+  }
+  isWeak = isWeak;
+  toggleWeak(e: Entity): void {
+    const on = !isWeak(e);
+    this.store.apply((d) => {
+      let next = setWeak(d, e.id, on);
+      if (on) {
+        // un solo candidato valido: lo scelgo io
+        const valid = this.externalCandidates(e).filter((c) => c.valid);
+        if (valid.length === 1) next = setExternalVia(next, e.id, [valid[0].rel.id]);
+      }
+      return next;
+    });
   }
   toggleExternal(e: Entity, relId: Id): void {
     const cur = e.primary?.externalVia ?? [];

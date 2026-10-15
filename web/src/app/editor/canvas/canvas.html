@@ -61,6 +61,9 @@
           <polygon data-noexport class="er-selected" [attr.points]="rhombus(r.box, 6)" />
         }
         <polygon class="er-rel-shape" [attr.points]="rhombus(r.box, 0)" />
+        @if (r.identifying) {
+          <polygon class="er-rel-weak" [attr.points]="rhombus(r.box, -7)" />
+        }
         @if (r.error) {
           <polygon data-noexport class="er-error-ring" [attr.points]="rhombus(r.box, 9)" />
         }

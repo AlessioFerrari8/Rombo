@@ -1,5 +1,5 @@
 import {
-  addAttribute, addEntity, addGeneralization, addRelationship, createDiagram, setExternalVia, toggleIdentifierAttribute,
+  addAttribute, addEntity, addGeneralization, addRelationship, createDiagram, setExternalVia, setWeak, toggleIdentifierAttribute,
   updateGeneralization, updateParticipant,
 } from './commands';
 import { buildCarrozzeria } from './fixtures/carrozzeria';
@@ -76,6 +76,21 @@ describe('buildScene', () => {
     expect(s.relationships[0].kindLabel).toBe('1:N');
     expect(s.entities.find((e) => e.name === 'Record')!.weak).toBe(true);
     expect(s.entities.find((e) => e.name === 'Giocatore')!.weak).toBe(false);
+    expect(s.relationships[0].identifying).toBe(true);
+  });
+
+  it("entità debole dichiarata: doppio bordo anche prima di scegliere l'associazione, rombo doppio solo dopo", () => {
+    let d = createDiagram();
+    const g = addEntity(d, { x: 0, y: 0 }, 'Giocatore'); d = g.diagram;
+    const rec = addEntity(d, { x: 400, y: 0 }, 'Record'); d = rec.diagram;
+    const r = addRelationship(d, [g.id, rec.id], undefined, 'stabilisce'); d = r.diagram;
+    d = setWeak(d, rec.id, true);
+    let s = buildScene(d, [], new Set());
+    expect(s.entities.find((e) => e.name === 'Record')!.weak).toBe(true);
+    expect(s.relationships[0].identifying).toBe(false);
+    d = setExternalVia(d, rec.id, [r.id]);
+    s = buildScene(d, [], new Set());
+    expect(s.relationships[0].identifying).toBe(true);
   });
 
   it('molteplicita\' numerica come nel libro: (1,25) e la relazione resta 1:N', () => {

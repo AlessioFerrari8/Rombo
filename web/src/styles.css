@@ -862,6 +862,7 @@
 .er-canvas { background: var(--er-paper); touch-action: none; user-select: none; }
 .er-grid-dot { fill: var(--er-grid); }
 .er-entity-shape { fill: var(--er-entity); stroke: var(--er-ink); stroke-width: 2; }
+.er-rel-weak { fill: none; stroke: var(--er-ink); stroke-width: 1.5; stroke-linejoin: round; }
 .er-rel-shape { fill: var(--er-rel); stroke: var(--er-ink); stroke-width: 2; stroke-linejoin: round; }
 .er-line { stroke: var(--er-ink); stroke-width: 1.75; stroke-linecap: round; fill: none; }
 .er-isa-line { stroke: var(--er-isa); stroke-width: 2; stroke-linecap: round; fill: none; }

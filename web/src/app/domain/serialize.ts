@@ -35,6 +35,7 @@ const entity = z.object({
   id, name, pos: point, attributes: z.array(attribute).max(ER_ATTRIBUTES_MAX),
   primary: z.object({ attributeIds: z.array(id), externalVia: z.array(id) }).nullable(),
   alternates: z.array(z.array(id)),
+  weak: z.boolean().optional(),
 });
 const participant = z.object({
   entityId: id, role: z.string().max(40).optional(),

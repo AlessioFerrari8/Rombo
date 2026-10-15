@@ -1,5 +1,5 @@
 import {
-  addAttribute, addEntity, addGeneralization, addRelationship, createDiagram, setAlternates, setExternalVia,
+  addAttribute, addEntity, addGeneralization, addRelationship, createDiagram, setAlternates, setExternalVia, setWeak,
   toggleIdentifierAttribute, updateAttribute, updateGeneralization, updateParticipant,
 } from './commands';
 import { Diagram, Id } from './model';
@@ -60,6 +60,18 @@ describe('validate', () => {
     expect(codes(d)).toContain('external-id-not-11');
     d = updateParticipant(d, r.id, 0, { min: 1, max: 1 });
     expect(codes(d)).not.toContain('external-id-not-11');
+  });
+
+  it("un'entità debole senza associazione identificante è un errore", () => {
+    const a = entity(createDiagram(), 'Squadra');
+    const b = entity(a.d, 'Giocatore', false);
+    const r = addRelationship(b.d, [b.id, a.id], undefined, 'gioca');
+    let d = updateParticipant(r.diagram, r.id, 0, { min: 1, max: 1 });
+    d = updateParticipant(d, r.id, 1, { min: 0, max: 'N' });
+    d = setWeak(d, b.id, true);
+    expect(codes(d)).toContain('weak-no-identifier');
+    d = setExternalVia(d, b.id, [r.id]);
+    expect(codes(d)).not.toContain('weak-no-identifier');
   });
 
   it("un attributo dell'identificatore deve essere (1,1)", () => {

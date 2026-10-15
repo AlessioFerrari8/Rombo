@@ -43,6 +43,13 @@ export interface Entity {
   primary: Identifier | null;
   /** Chiavi alternative: insiemi di id di attributi (diventano UNIQUE). */
   alternates: Id[][];
+  /** Entità debole dichiarata: si identifica anche tramite un'associazione (vedi `isWeak`). */
+  weak?: boolean;
+}
+
+/** Debole se dichiarata tale, o (file vecchi) se ha già un identificatore esterno. */
+export function isWeak(e: Entity): boolean {
+  return e.weak === true || (e.primary?.externalVia.length ?? 0) > 0;
 }
 
 /** Massimo di una partecipazione: 1, N, oppure un numero preciso come il 25 di (1,25). */

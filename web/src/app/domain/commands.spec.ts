@@ -1,6 +1,6 @@
 import {
   addAttribute, addEntity, addGeneralization, addRelationship, copyElements, createDiagram,
-  deleteElements, moveElements, pasteElements, redistributeAttributes, rename, setExternalVia,
+  deleteElements, moveElements, pasteElements, redistributeAttributes, rename, setExternalVia, setWeak,
   toggleIdentifierAttribute, uniqueName, updateParticipant,
 } from './commands';
 import { Diagram, entityById, relationshipById } from './model';
@@ -142,5 +142,16 @@ describe('redistributeAttributes', () => {
     const lines = connectedAngles(out, a.id);
     const angle = out.entities[0].attributes[0].angle;
     expect(Math.min(...lines.map((l) => angDist(l, angle)))).toBeGreaterThan(0.5);
+  });
+
+  it("setWeak: dichiara l'entità debole; toglierla scollega l'associazione identificante", () => {
+    let { d, auto, rel } = base();
+    d = updateParticipant(d, rel, 1, { min: 1, max: 1 });
+    d = setWeak(d, auto, true);
+    expect(entityById(d, auto)!.weak).toBe(true);
+    d = setExternalVia(d, auto, [rel]);
+    d = setWeak(d, auto, false);
+    expect(entityById(d, auto)!.weak).toBeUndefined();
+    expect(entityById(d, auto)!.primary).toBeNull();
   });
 });

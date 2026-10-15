@@ -1,6 +1,6 @@
 import { Attribute, Diagram, Entity } from './model';
 import { generateLogical } from './logical-schema';
-import { addAttribute, addEntity, addRelationship, createDiagram, updateParticipant } from './commands';
+import { addAttribute, addEntity, addRelationship, createDiagram, setWeak, updateParticipant } from './commands';
 import { parseDiagramFile, serializeDiagram } from './serialize';
 
 function sample() {
@@ -240,5 +240,14 @@ describe('schema logico generato da un ER ai limiti', () => {
     const r = parseDiagramFile(serializeDiagram({ ...d, logical }));
     if (!r.ok) throw new Error(r.error);
     expect(r.diagram.logical!.tables).toHaveLength(logical.tables.length);
+  });
+});
+
+describe('entità debole', () => {
+  it('il flag weak sopravvive a salvataggio e apertura', () => {
+    let d = createDiagram('W');
+    const e = addEntity(d, { x: 0, y: 0 }, 'Record'); d = setWeak(e.diagram, e.id, true);
+    const r = parseDiagramFile(serializeDiagram(d));
+    expect(r.ok && r.diagram.entities[0].weak).toBe(true);
   });
 });

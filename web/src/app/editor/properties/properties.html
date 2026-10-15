@@ -9,6 +9,11 @@
         [value]="e.name" [readonly]="ro()" (change)="renameEl(e.id, $any($event.target).value)" />
     </header>
 
+    <label class="ui-choice">
+      <input type="checkbox" class="ui-checkbox" [checked]="isWeak(e)" [disabled]="ro()" (change)="toggleWeak(e)" />
+      <span class="min-w-0 flex-1">Entità debole</span>
+    </label>
+
     <div class="ui-section">
       <div class="ui-section-head">
         <h3 class="ui-section-title">Attributi</h3>
@@ -44,10 +49,13 @@
       }
     </div>
 
-    @if (externalCandidates(e).length) {
+    @if (isWeak(e)) {
       <div class="ui-section">
-        <h3 class="ui-section-title">Identificatore esterno</h3>
-        <p class="ui-hint -mt-1">Per le entità deboli: l'identificatore comprende anche la chiave dell'entità collegata.</p>
+        <h3 class="ui-section-title">Associazione identificante</h3>
+        <p class="ui-hint -mt-1">L'entità debole non basta a se stessa: l'identificatore comprende anche la chiave dell'entità collegata (il rombo diventa doppio).</p>
+        @if (!externalCandidates(e).length) {
+          <p class="ui-hint">Collega prima l'entità a un'altra con un'associazione.</p>
+        }
         @for (c of externalCandidates(e); track c.rel.id) {
           <label class="ui-choice flex-wrap">
             <input type="checkbox" class="ui-checkbox" [checked]="c.on" [disabled]="ro()" (change)="toggleExternal(e, c.rel.id)" />

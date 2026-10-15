@@ -246,6 +246,20 @@ export function setExternalVia(d: Diagram, entityId: Id, relIds: Id[]): Diagram 
   });
 }
 
+/** Dichiara (o toglie) l'entità debole; togliendola si scollegano anche le associazioni identificanti. */
+export function setWeak(d: Diagram, entityId: Id, weak: boolean): Diagram {
+  return edit(d, (x) => {
+    const e = mutableEntity(x, entityId);
+    if (weak) {
+      e.weak = true;
+    } else {
+      delete e.weak;
+      if (e.primary) e.primary.externalVia = [];
+      normalizePrimary(e);
+    }
+  });
+}
+
 export function setAlternates(d: Diagram, entityId: Id, sets: Id[][]): Diagram {
   return edit(d, (x) => {
     const e = mutableEntity(x, entityId);

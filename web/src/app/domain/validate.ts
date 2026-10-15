@@ -1,4 +1,4 @@
-import { Diagram, Id, SQL_TYPE_RE, entityById, isRelationship, relationshipById } from './model';
+import { Diagram, Id, SQL_TYPE_RE, entityById, isRelationship, isWeak, relationshipById } from './model';
 
 export type Severity = 'error' | 'warning';
 
@@ -8,7 +8,7 @@ export type IssueCode =
   | 'identifier-cycle' | 'isa-cycle' | 'isa-child-has-identifier' | 'invalid-sql-type' | 'merge-down-partial'
   | 'isolated-entity' | 'generic-relationship-name' | 'multivalued-attribute' | 'isa-default-strategy'
   | 'isa-mixed-strategies' | 'text-in-key' | 'name-too-long' | 'composite-one-part' | 'multivalued-composite'
-  | 'duplicate-part'
+  | 'duplicate-part' | 'weak-no-identifier'
   | 'empty-table-name' | 'empty-column-name' | 'duplicate-column' | 'invalid-identifier' | 'empty-table'
   | 'no-table-key' | 'nullable-key' | 'fk-target-not-key' | 'fk-type-mismatch';
 
@@ -120,6 +120,9 @@ export function validate(d: Diagram): Issue[] {
         err('isa-child-has-identifier', `${q(e.name)} eredita l'identificatore da ${q(nameOf(childOf.get(e.id)!))}: togli il suo.`, e.id);
       }
       continue;
+    }
+    if (isWeak(e) && !e.primary?.externalVia.length) {
+      err('weak-no-identifier', `${q(e.name)} è un'entità debole ma non ha l'associazione identificante: sceglila nel pannello Proprietà.`, e.id);
     }
     if (!e.primary) {
       err('no-primary', `${q(e.name)} non ha un identificatore: clicca il pallino di un attributo per sceglierlo.`, e.id);

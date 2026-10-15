@@ -2,13 +2,15 @@ import {
   ATTR_STICK, AttrGeom, Bounds, Box, IsaGeom, attributeGeometry, boxBounds, compositeGeometry, entityBox, generalizationGeometry, labelBounds,
   participantGeometry, relBox, selfLoopGeometry, unionBounds,
 } from './geometry';
-import { AttrCard, Diagram, Entity, Id, Point, Relationship } from './model';
+import { AttrCard, Diagram, Entity, Id, Point, Relationship, isWeak } from './model';
 import { Issue } from './validate';
 
 export interface ShapeView {
   id: Id; box: Box; name: string; selected: boolean; error: boolean; issues: number;
   /** Entita' debole (identificata anche tramite un'associazione): doppio bordo. */
   weak?: boolean;
+  /** Associazione identificante di un'entità debole: doppio rombo. */
+  identifying?: boolean;
   /** Associazione binaria: 1:1, 1:N o N:N, dedotta dai massimi. */
   kindLabel?: string;
 }
@@ -53,12 +55,13 @@ export function buildScene(d: Diagram, issues: Issue[], selection: ReadonlySet<I
   const entities = d.entities.map((e) => {
     const b = entityBox(e);
     boxes.set(e.id, b);
-    return { ...shape(e, b), weak: !!e.primary?.externalVia.length };
+    return { ...shape(e, b), weak: isWeak(e) };
   });
+  const identifying = new Set(d.entities.flatMap((e) => e.primary?.externalVia ?? []));
   const relationships = d.relationships.map((r) => {
     const b = relBox(r);
     boxes.set(r.id, b);
-    return { ...shape(r, b), kindLabel: kindLabel(r) };
+    return { ...shape(r, b), kindLabel: kindLabel(r), identifying: identifying.has(r.id) };
   });
 
   const attributes: AttrView[] = [];
