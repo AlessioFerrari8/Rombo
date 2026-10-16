@@ -166,21 +166,57 @@ export function selfLoopGeometry(rel: Box, ent: Box): [LinkGeom, LinkGeom] {
   ];
 }
 
-/** Linea rombo → entita'. `spread` apre a ventaglio le linee di un'associazione ricorsiva. */
-export function participantGeometry(rel: Box, ent: Box, spread = 0): LinkGeom {
-  const a = Math.atan2(ent.y - rel.y, ent.x - rel.x) + spread;
-  const from = rhombusBorder(rel, a);
-  const to = rectBorder(ent, Math.atan2(from.y - ent.y, from.x - ent.x) + spread * 0.6);
+/** Margine dagli angoli arrotondati (rx=10) del rettangolo: una linea dritta non ci arriva mai. */
+const CORNER_MARGIN = 12;
+/** Mezza larghezza/altezza indicative di «(1,N)»: la cardinalita' non deve toccare la linea. */
+const CARD_HALF_W = 16;
+const CARD_HALF_H = 8;
+
+/**
+ * Linea rombo → entita': sempre un segmento solo. Se il rombo e' (quasi) in colonna o in riga con
+ * l'entita' la linea e' perfettamente verticale/orizzontale e parte dal vertice del rombo; altrimenti
+ * segue la retta centro-centro. `spread` apre a ventaglio le linee verso la stessa entita';
+ * `clearAlong` e' un tratto della linea, dal bordo dell'entita', che la cardinalita' deve lasciare libero
+ * (li' attraversa la barra di un identificatore esterno).
+ */
+export function participantGeometry(rel: Box, ent: Box, spread = 0, clearAlong = 0): LinkGeom {
+  let from: Point;
+  let to: Point;
+  const vGap = Math.abs(ent.y - rel.y) - (ent.h + rel.h) / 2;
+  const hGap = Math.abs(ent.x - rel.x) - (ent.w + rel.w) / 2;
+  if (!spread && vGap > 0 && Math.abs(rel.x - ent.x) <= ent.w / 2 - CORNER_MARGIN) {
+    const sy = Math.sign(ent.y - rel.y);
+    from = { x: rel.x, y: rel.y + (sy * rel.h) / 2 };
+    to = { x: rel.x, y: ent.y - (sy * ent.h) / 2 };
+  } else if (!spread && hGap > 0 && Math.abs(rel.y - ent.y) <= ent.h / 2 - CORNER_MARGIN) {
+    const sx = Math.sign(ent.x - rel.x);
+    from = { x: rel.x + (sx * rel.w) / 2, y: rel.y };
+    to = { x: ent.x - (sx * ent.w) / 2, y: rel.y };
+  } else {
+    const a = Math.atan2(ent.y - rel.y, ent.x - rel.x) + spread;
+    from = rhombusBorder(rel, a);
+    to = rectBorder(ent, Math.atan2(from.y - ent.y, from.x - ent.x) + spread * 0.6);
+  }
   const len = Math.hypot(from.x - to.x, from.y - to.y) || 1;
   const ux = (from.x - to.x) / len;
   const uy = (from.y - to.y) / len;
+  // distanza dalla linea che basta a non toccarla con un'etichetta larga CARD_HALF_W*2
+  const off = CARD_HALF_W * Math.abs(uy) + CARD_HALF_H * Math.abs(ux) + 4;
+  const along = clearAlong ? Math.max(22, clearAlong + CARD_HALF_W * Math.abs(ux) + CARD_HALF_H * Math.abs(uy) + 6) : 22;
   return {
     from,
     to,
     points: [from, to],
-    card: { x: to.x + ux * 22 - uy * 12, y: to.y + uy * 22 + ux * 12 },
+    card: { x: to.x + ux * along - uy * off, y: to.y + uy * along + ux * off },
     mid: { x: (from.x + to.x) / 2 - uy * 12, y: (from.y + to.y) / 2 + ux * 12 },
   };
+}
+
+/** Raddrizza un angolo a pochi gradi da orizzontale/verticale: le aste degli attributi non escono storte. */
+export function snapAngle(angle: number, tolerance = 0.1): number {
+  const q = Math.PI / 2;
+  const k = Math.round(angle / q);
+  return Math.abs(angle - k * q) <= tolerance ? k * q : angle;
 }
 
 export interface IsaGeom {

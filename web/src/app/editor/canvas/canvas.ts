@@ -5,7 +5,7 @@ import { EditorStore } from '../editor-store';
 import {
   addAttribute, addEntity, addRelationship, moveElements, rename, toggleIdentifierAttribute, updateAttribute,
 } from '../../domain/commands';
-import { Box, GRID, rhombusPoints } from '../../domain/geometry';
+import { Box, GRID, rhombusPoints, snapAngle } from '../../domain/geometry';
 import { Id, Point, entityById, findAttribute, findPart, relationshipById } from '../../domain/model';
 import { IsaView, buildScene, elementBounds } from '../../domain/scene';
 import { View, centerOn, fitView, screenToWorld, worldToScreen, zoomAt } from '../../domain/viewport';
@@ -245,7 +245,7 @@ export class Canvas {
         const owner = entityById(d, g.ownerId) ?? relationshipById(d, g.ownerId);
         if (!owner) break;
         const w = this.world(ev);
-        const angle = Math.atan2(w.y - owner.pos.y, w.x - owner.pos.x);
+        const angle = snapAngle(Math.atan2(w.y - owner.pos.y, w.x - owner.pos.x));
         this.store.dragTo((base) => updateAttribute(base, g.attrId, { angle }));
         break;
       }

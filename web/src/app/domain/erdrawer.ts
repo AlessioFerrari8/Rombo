@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { createDiagram } from './commands';
+import { snapAngle } from './geometry';
 import { newId } from './ids';
 import { Attribute, Diagram, MaxCard } from './model';
 
@@ -110,7 +111,7 @@ export function fromErdrawer(p: ErdrawerProject): { diagram: Diagram; warnings: 
       id: idFor(a.uuid),
       name: String(a.name ?? '').trim(),
       card: '1,1',
-      angle: Math.atan2(a.circleY - cy, a.circleX - cx),
+      angle: snapAngle(Math.atan2(a.circleY - cy, a.circleX - cx)),
     }));
 
   for (const e of p.entities) {

@@ -93,6 +93,24 @@ describe('buildScene', () => {
     expect(s.relationships[0].identifying).toBe(true);
   });
 
+  it("l'etichetta 1:N non finisce sopra le linee: sopra il rombo se libero, altrimenti di lato", () => {
+    const build = (ax: number, ay: number, bx: number, by: number) => {
+      let d = createDiagram();
+      const a = addEntity(d, { x: ax, y: ay }, 'A'); d = a.diagram;
+      const b = addEntity(d, { x: bx, y: by }, 'B'); d = b.diagram;
+      const r = addRelationship(d, [a.id, b.id], undefined, 'lega'); d = r.diagram;
+      d = updateParticipant(d, r.id, 0, { min: 0, max: 'N' });
+      d = updateParticipant(d, r.id, 1, { min: 1, max: 1 });
+      return buildScene(d, [], new Set()).relationships[0];
+    };
+    const row = build(0, 0, 400, 0);
+    expect(row.kindPos).toEqual({ x: row.box.x, y: row.box.y - row.box.h / 2 - 10, anchor: 'middle' });
+    // entita' sopra e sotto: le linee escono dai vertici in alto e in basso
+    const col = build(0, 0, 0, 400);
+    expect(Math.abs(col.kindPos!.x - col.box.x)).toBeGreaterThan(20);
+    expect(col.kindPos!.anchor).not.toBe('middle');
+  });
+
   it('molteplicita\' numerica come nel libro: (1,25) e la relazione resta 1:N', () => {
     let d = createDiagram();
     const a = addEntity(d, { x: 0, y: 0 }, 'Studente'); d = a.diagram;
@@ -103,6 +121,30 @@ describe('buildScene', () => {
     const s = buildScene(d, [], new Set());
     expect(s.links.map((l) => l.cardText)).toEqual(['(1,1)', '(1,25)']);
     expect(s.relationships[0].kindLabel).toBe('1:N');
+  });
+
+  it("la cardinalita' della debole non finisce sopra la barra dell'identificatore esterno", () => {
+    for (const [x, y] of [[400, 0], [0, 400]]) {
+      let d = createDiagram();
+      const g = addEntity(d, { x: 0, y: 0 }, 'Squadra'); d = g.diagram;
+      const rec = addEntity(d, { x: 2 * x, y: 2 * y }, 'Giocatore'); d = rec.diagram;
+      const num = addAttribute(d, rec.id, 'Numero'); d = num.diagram;
+      const r = addRelationship(d, [g.id, rec.id], undefined, 'gioca'); d = r.diagram;
+      d = updateParticipant(d, r.id, 0, { min: 0, max: 'N' });
+      d = updateParticipant(d, r.id, 1, { min: 1, max: 1 });
+      d = setExternalVia(toggleIdentifierAttribute(d, rec.id, num.id), rec.id, [r.id]);
+      const s = buildScene(d, [], new Set());
+      const { card } = s.links[1];
+      const pts = [...s.idBars[0].points, s.idBars[0].end];
+      // nessun tratto della barra passa nel riquadro di «(1,1)» (circa 32x14)
+      for (let i = 1; i < pts.length; i++) {
+        for (let t = 0; t <= 1; t += 0.02) {
+          const x = pts[i - 1].x + (pts[i].x - pts[i - 1].x) * t;
+          const y = pts[i - 1].y + (pts[i].y - pts[i - 1].y) * t;
+          expect(Math.abs(x - card.x) < 16 && Math.abs(y - card.y) < 7).toBe(false);
+        }
+      }
+    }
   });
 
   it("la barra dell'identificatore esterno resta tutta fuori dall'entita', pallino compreso", () => {

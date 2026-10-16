@@ -41,7 +41,7 @@
     @for (l of scene().links; track l.key) {
       <g (pointerdown)="onShapeDown($event, l.relId)">
         <polyline class="er-hit-line" [attr.points]="points(l.points)" />
-        <polyline class="er-line" [class.is-optional]="l.optional" [attr.points]="points(l.points)" />
+        <polyline data-link class="er-line" [class.is-optional]="l.optional" [attr.points]="points(l.points)" />
       </g>
     }
 
@@ -69,7 +69,7 @@
         }
         <text class="er-name er-name-sm" [attr.x]="r.box.x" [attr.y]="r.box.y">{{ r.name || '…' }}</text>
         @if (r.kindLabel) {
-          <text class="er-kind" [attr.x]="r.box.x" [attr.y]="r.box.y - r.box.h / 2 - 10">{{ r.kindLabel }}</text>
+          <text class="er-kind" [attr.x]="r.kindPos?.x ?? r.box.x" [attr.y]="r.kindPos?.y ?? r.box.y - r.box.h / 2 - 10" [style.text-anchor]="r.kindPos?.anchor ?? 'middle'">{{ r.kindLabel }}</text>
         }
       </g>
     }

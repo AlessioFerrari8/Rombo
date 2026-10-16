@@ -60,6 +60,13 @@ describe('fromErdrawer', () => {
     expect(byName('Proprietario').attributes[0].angle).toBeCloseTo(-Math.PI / 2);
   });
 
+  it("un attributo quasi in verticale arriva con l'asta dritta", () => {
+    const p = structuredClone(project);
+    p.entities[0].attributes![0].circleX = 166;
+    const d = fromErdrawer(p).diagram;
+    expect(d.entities.find((e) => e.name === 'Proprietario')!.attributes[0].angle).toBe(-Math.PI / 2);
+  });
+
   it("le chiavi diventano l'identificatore (composto se erano piu di una)", () => {
     const auto = byName('Auto');
     expect(auto.primary!.attributeIds).toEqual([auto.attributes[0].id, auto.attributes[1].id]);

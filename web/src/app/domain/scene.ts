@@ -13,6 +13,8 @@ export interface ShapeView {
   identifying?: boolean;
   /** Associazione binaria: 1:1, 1:N o N:N, dedotta dai massimi. */
   kindLabel?: string;
+  /** Dove scrivere `kindLabel`: sopra il rombo, o di lato se li' passa una linea. */
+  kindPos?: { x: number; y: number; anchor: 'start' | 'end' | 'middle' };
 }
 export interface PartView { id: Id; text: string; geom: AttrGeom; selected: boolean; error: boolean }
 export interface AttrView {
@@ -106,7 +108,10 @@ export function buildScene(d: Diagram, issues: Issue[], selection: ReadonlySet<I
       const same = r.participants.filter((x) => x.entityId === p.entityId);
       const k = same.indexOf(p);
       const spread = same.length > 1 ? (k - (same.length - 1) / 2) * 0.5 : 0;
-      const g = loop ? loop[index] : participantGeometry(rb, eb, spread);
+      const ent = d.entities.find((e) => e.id === p.entityId);
+      // la barra di un identificatore esterno composto attraversa il ramo a BAR_GAP dall'entita'
+      const barred = !!ent?.primary?.externalVia.includes(r.id) && ent.primary.attributeIds.length + ent.primary.externalVia.length > 1;
+      const g = loop ? loop[index] : participantGeometry(rb, eb, spread, barred ? BAR_GAP : 0);
       linkEnd.set(`${r.id}|${p.entityId}`, { from: g.points[g.points.length - 2], to: g.to });
       links.push({
         key: `${r.id}:${index}`, relId: r.id, index, from: g.from, to: g.to, points: g.points, card: g.card,
@@ -114,6 +119,18 @@ export function buildScene(d: Diagram, issues: Issue[], selection: ReadonlySet<I
         role: p.role, rolePos: g.mid, roleAnchor: g.roleAnchor ?? 'middle',
       });
     });
+  }
+
+  // etichetta 1:N: nel primo posto attorno al rombo dove non passa nessuna linea o asta
+  for (const rv of relationships) {
+    if (!rv.kindLabel) continue;
+    const r = d.relationships.find((x) => x.id === rv.id)!;
+    const b = rv.box;
+    const dirs = [
+      ...links.filter((l) => l.relId === r.id).map((l) => Math.atan2(l.points[1].y - l.points[0].y, l.points[1].x - l.points[0].x)),
+      ...r.attributes.map((a) => a.angle),
+    ];
+    rv.kindPos = kindLabelPos(b, dirs);
   }
 
   // identificatori composti o esterni: barra che attraversa le aste e finisce con un pallino pieno
@@ -211,6 +228,27 @@ function routeAround(b: Box, pts: Point[]): Point[] {
     out.push(q);
   }
   return out;
+}
+
+function angleGap(a: number, b: number): number {
+  const d = Math.abs(a - b) % (2 * Math.PI);
+  return d > Math.PI ? 2 * Math.PI - d : d;
+}
+
+function kindLabelPos(b: Box, dirs: number[]): NonNullable<ShapeView['kindPos']> {
+  const w = b.w / 4;
+  const h = b.h / 4;
+  const spots: Array<{ angle: number; pos: NonNullable<ShapeView['kindPos']> }> = [
+    { angle: -Math.PI / 2, pos: { x: b.x, y: b.y - b.h / 2 - 10, anchor: 'middle' } },
+    { angle: Math.atan2(-h, w), pos: { x: b.x + w + 8, y: b.y - h - 8, anchor: 'start' } },
+    { angle: Math.atan2(-h, -w), pos: { x: b.x - w - 8, y: b.y - h - 8, anchor: 'end' } },
+    { angle: Math.PI / 2, pos: { x: b.x, y: b.y + b.h / 2 + 20, anchor: 'middle' } },
+    { angle: Math.atan2(h, w), pos: { x: b.x + w + 8, y: b.y + h + 18, anchor: 'start' } },
+    { angle: Math.atan2(h, -w), pos: { x: b.x - w - 8, y: b.y + h + 18, anchor: 'end' } },
+  ];
+  const clearance = (a: number) => Math.min(Math.PI, ...dirs.map((x) => angleGap(a, x)));
+  const free = spots.find((s) => clearance(s.angle) >= 0.45);
+  return (free ?? spots.reduce((best, s) => (clearance(s.angle) > clearance(best.angle) ? s : best))).pos;
 }
 
 function kindLabel(r: Relationship): string | undefined {

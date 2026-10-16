@@ -191,3 +191,22 @@ test('sotto i 1024 px si guarda soltanto', async ({ page }) => {
   await page.keyboard.press('Delete');
   await expect(page.locator('[data-entity="Auto"]')).toBeVisible();
 });
+
+test('le linee rombo-entità sono segmenti dritti, anche dopo il layout automatico', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('input[type=file]').setInputFiles(fixture);
+  await expect(page.getByRole('application', { name: 'Diagramma entità-relazione' })).toBeVisible();
+  await page.keyboard.press('l');
+  await expect(page.getByRole('button', { name: 'Annulla' })).toBeEnabled();
+  const lines = await page.locator('polyline[data-link]').evaluateAll((els) =>
+    els.map((el) => el.getAttribute('points')!.trim().split(/\s+/).map((p) => p.split(',').map(Number))));
+  expect(lines.length).toBeGreaterThan(0);
+  for (const pts of lines) {
+    expect(pts).toHaveLength(2);
+    const [[x1, y1], [x2, y2]] = pts;
+    // o perfettamente verticale/orizzontale, o una diagonale vera (non «quasi dritta»)
+    const dx = Math.abs(x2 - x1);
+    const dy = Math.abs(y2 - y1);
+    expect(dx === 0 || dy === 0 || Math.min(dx, dy) > 20).toBe(true);
+  }
+});
