@@ -7,3 +7,4 @@ release/
 *.log
 .env
 .superpowers/
+web/test-results/
