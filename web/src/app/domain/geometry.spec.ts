@@ -1,6 +1,6 @@
 import { addAttribute, addEntity, createDiagram } from './commands';
 import {
-  ATTR_STICK, attributeGeometry, compositeGeometry, diagramBounds, entityBox, participantGeometry, rectBorder, relBox, rhombusBorder, snapAngle,
+  ATTR_STICK, attributeGeometry, compositeGeometry, diagramBounds, entityBox, identifierArc, participantGeometry, rectBorder, relBox, rhombusBorder, snapAngle,
 } from './geometry';
 
 const box = { x: 0, y: 0, w: 120, h: 56 };
@@ -116,5 +116,40 @@ describe('geometria', () => {
       const xs = compositeGeometry(box, 'rect', angle, 'indirizzo', 3).parts.map((p) => p.dot.x);
       expect([...xs].sort((a, b) => a - b)).toEqual(xs);
     }
+  });
+
+  describe('identifierArc', () => {
+    const box = { x: 0, y: 0, w: 120, h: 56 };
+    const branch = (tx: number, ty: number) => {
+      const to = rectBorder(box, Math.atan2(ty, tx));
+      return { from: { x: tx, y: ty }, to };
+    };
+
+    it("rami in alto a sinistra e a destra: l'arco passa sopra l'entita', attraversa i rami e prosegue col pallino", () => {
+      const g = identifierArc(box, [branch(-200, -150), branch(200, -150)], []);
+      expect(g.crossings).toHaveLength(2);
+      expect(g.points.some((p) => Math.abs(p.x) < 6 && p.y < -28)).toBe(true);
+      expect(g.points.every((p) => p.y < 28)).toBe(true);
+      // il pallino sta oltre uno dei due rami, non fra i due
+      const angles = g.crossings.map((c) => Math.atan2(c.y, c.x));
+      const dotAngle = Math.atan2(g.dot.y, g.dot.x);
+      expect(dotAngle < Math.min(...angles) || dotAngle > Math.max(...angles)).toBe(true);
+    });
+
+    it('rami opposti: sceglie il lato senza ostacoli', () => {
+      const passes = (pts: Array<{ x: number; y: number }>, sign: number) => pts.some((p) => Math.abs(p.x) < 6 && p.y * sign > 28);
+      const top = identifierArc(box, [branch(-300, 0), branch(300, 0)], [{ x: 0, y: 54 }]);
+      expect(passes(top.points, -1)).toBe(true);
+      expect(passes(top.points, 1)).toBe(false);
+      const bottom = identifierArc(box, [branch(-300, 0), branch(300, 0)], [{ x: 0, y: -54 }]);
+      expect(passes(bottom.points, 1)).toBe(true);
+      expect(passes(bottom.points, -1)).toBe(false);
+    });
+
+    it('il pallino va dalla parte libera', () => {
+      const obstacle = { x: -60, y: -60 };
+      const g = identifierArc(box, [branch(-200, -150), branch(200, -150)], [obstacle]);
+      expect(g.dot.x).toBeGreaterThan(0);
+    });
   });
 });

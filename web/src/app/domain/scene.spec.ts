@@ -1,6 +1,6 @@
 import {
   addAttribute, addEntity, addGeneralization, addRelationship, createDiagram, setExternalVia, setWeak, toggleIdentifierAttribute,
-  updateGeneralization, updateParticipant,
+  updateAttribute, updateGeneralization, updateParticipant,
 } from './commands';
 import { buildCarrozzeria } from './fixtures/carrozzeria';
 import { buildScene, elementBounds, sceneExportBounds } from './scene';
@@ -147,18 +147,21 @@ describe('buildScene', () => {
         const link = s.links.find((l) => l.relId === r && l.index === 1)!;
         expect(s.extIds).toHaveLength(1);
         const t = s.extIds[0];
-        expect(t).toMatchObject({ entityId: w, relId: r });
+        expect(t).toMatchObject({ entityId: w, relIds: [r] });
+        // un solo ramo: un taglietto, cioe' un segmento
+        expect(t.points).toHaveLength(2);
+        const from = t.points[0];
         const ux = (link.from.x - link.to.x) / Math.hypot(link.from.x - link.to.x, link.from.y - link.to.y);
         const uy = (link.from.y - link.to.y) / Math.hypot(link.from.x - link.to.x, link.from.y - link.to.y);
         // la base sta sul ramo, a poca distanza dal bordo dell'entita' (verso il rombo)
-        const along = (t.from.x - link.to.x) * ux + (t.from.y - link.to.y) * uy;
-        const across = (t.from.x - link.to.x) * -uy + (t.from.y - link.to.y) * ux;
+        const along = (from.x - link.to.x) * ux + (from.y - link.to.y) * uy;
+        const across = (from.x - link.to.x) * -uy + (from.y - link.to.y) * ux;
         expect(along).toBeGreaterThan(6);
         expect(along).toBeLessThan(24);
         expect(Math.abs(across)).toBeLessThan(1e-6);
         // perpendicolare al ramo, lunga quanto un'asticella
-        const tx = t.dot.x - t.from.x;
-        const ty = t.dot.y - t.from.y;
+        const tx = t.dot.x - from.x;
+        const ty = t.dot.y - from.y;
         expect(Math.abs(tx * ux + ty * uy)).toBeLessThan(1e-6);
         expect(Math.hypot(tx, ty)).toBeGreaterThanOrEqual(14);
         expect(Math.hypot(tx, ty)).toBeLessThanOrEqual(22);
@@ -187,6 +190,78 @@ describe('buildScene', () => {
       // la barra non tocca il ramo dell'associazione
       for (const p of s.idBars[0].points) expect(Math.hypot(p.x - link.to.x, p.y - link.to.y)).toBeGreaterThan(20);
     });
+
+    // ESAME fra STUDENTE e CORSO: due associazioni identificanti, un arco solo
+    const esame = (sx: number, sy: number, cx: number, cy: number, attrAngles?: [number, number]) => {
+      let d = createDiagram();
+      const e = addEntity(d, { x: 0, y: 0 }, 'Esame'); d = e.diagram;
+      const st = addEntity(d, { x: sx, y: sy }, 'Studente'); d = st.diagram;
+      const co = addEntity(d, { x: cx, y: cy }, 'Corso'); d = co.diagram;
+      const data = addAttribute(d, e.id, 'Data'); d = toggleIdentifierAttribute(data.diagram, e.id, data.id);
+      const voto = addAttribute(d, e.id, 'Voto'); d = voto.diagram;
+      if (attrAngles) {
+        d = updateAttribute(d, data.id, { angle: attrAngles[0] });
+        d = updateAttribute(d, voto.id, { angle: attrAngles[1] });
+      }
+      const r1 = addRelationship(d, [st.id, e.id], undefined, 'sostiene'); d = r1.diagram;
+      const r2 = addRelationship(d, [co.id, e.id], undefined, 'riguarda'); d = r2.diagram;
+      for (const r of [r1.id, r2.id]) {
+        d = updateParticipant(d, r, 0, { min: 0, max: 'N' });
+        d = updateParticipant(d, r, 1, { min: 1, max: 1 });
+      }
+      d = setExternalVia(d, e.id, [r1.id, r2.id]);
+      return { s: buildScene(d, [], new Set()), e: e.id, rels: [r1.id, r2.id] };
+    };
+    const layouts: Array<[string, number, number, number, number, [number, number]?]> = [
+      ['sopra a sinistra e a destra', -300, -300, 300, -300],
+      ['sotto a sinistra e a destra', -300, 300, 300, 300],
+      ['a sinistra e a destra', -500, 0, 500, 0],
+      ['sopra e sotto', 0, -400, 0, 400],
+      ['a sinistra e sopra', -500, 0, 0, -400],
+      ['sopra e sotto, attributi ai lati', 0, -400, 0, 400, [Math.PI, 0]],
+      ['sotto a sinistra e a destra, attributi sopra e sotto', -300, 300, 300, 300, [-Math.PI / 2, Math.PI / 2]],
+    ];
+    for (const [where, sx, sy, cx, cy, angles] of layouts) {
+      it(`due identificanti (${where}): un arco unico che attraversa i due rami e finisce col pallino`, () => {
+        const { s, e, rels } = esame(sx, sy, cx, cy, angles);
+        expect(s.extIds).toHaveLength(1);
+        const arc = s.extIds[0];
+        expect(arc.entityId).toBe(e);
+        expect([...arc.relIds].sort()).toEqual([...rels].sort());
+        expect(arc.points.length).toBeGreaterThan(8);
+        expect(arc.dot).toEqual(arc.points[arc.points.length - 1]);
+        const box = s.entities.find((x) => x.id === e)!.box;
+        // tutto fuori dall'entita', con un po' di margine
+        for (const p of arc.points) expect(Math.abs(p.x - box.x) > box.w / 2 + 4 || Math.abs(p.y - box.y) > box.h / 2 + 4).toBe(true);
+        // curva pulita: passi corti e niente svolte brusche
+        for (let i = 1; i < arc.points.length; i++) {
+          expect(Math.hypot(arc.points[i].x - arc.points[i - 1].x, arc.points[i].y - arc.points[i - 1].y)).toBeLessThan(12);
+        }
+        for (let i = 2; i < arc.points.length; i++) {
+          const a1 = Math.atan2(arc.points[i - 1].y - arc.points[i - 2].y, arc.points[i - 1].x - arc.points[i - 2].x);
+          const a2 = Math.atan2(arc.points[i].y - arc.points[i - 1].y, arc.points[i].x - arc.points[i - 1].x);
+          const turn = Math.abs(Math.atan2(Math.sin(a2 - a1), Math.cos(a2 - a1)));
+          expect(turn).toBeLessThan(0.6);
+        }
+        // attraversa ogni ramo identificante
+        for (const rid of rels) {
+          const l = s.links.find((x) => x.relId === rid && x.index === 1)!;
+          const crosses = arc.points.some((p, i) => {
+            if (!i) return false;
+            const q = arc.points[i - 1];
+            const side = (pt: { x: number; y: number }) => (l.from.x - l.to.x) * (pt.y - l.to.y) - (l.from.y - l.to.y) * (pt.x - l.to.x);
+            return Math.sign(side(p)) !== Math.sign(side(q));
+          });
+          expect(crosses).toBe(true);
+        }
+        // niente sovrapposizioni con cardinalita' e attributi
+        for (const p of arc.points) {
+          for (const l of s.links) expect(Math.abs(p.x - l.card.x) < 18 && Math.abs(p.y - l.card.y) < 9).toBe(false);
+          for (const a of s.attributes) expect(Math.hypot(a.geom.dot.x - p.x, a.geom.dot.y - p.y)).toBeGreaterThan(8);
+        }
+        for (const a of s.attributes) expect(Math.hypot(a.geom.dot.x - arc.dot.x, a.geom.dot.y - arc.dot.y)).toBeGreaterThan(14);
+      });
+    }
 
     it('senza chiave parziale: solo il taglietto', () => {
       const { s } = weak(400, 0, []);

@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "id": "fixture-esame",
+  "title": "Esami",
+  "entities": [
+    {
+      "id": "e1", "name": "Studente", "pos": { "x": 160, "y": 400 },
+      "attributes": [{ "id": "a1", "name": "Matricola", "card": "1,1", "type": "CHAR(6)", "angle": 1.5707963267948966 }],
+      "primary": { "attributeIds": ["a1"], "externalVia": [] }, "alternates": []
+    },
+    {
+      "id": "e2", "name": "Corso", "pos": { "x": 800, "y": 400 },
+      "attributes": [{ "id": "a2", "name": "Codice", "card": "1,1", "type": "CHAR(5)", "angle": 1.5707963267948966 }],
+      "primary": { "attributeIds": ["a2"], "externalVia": [] }, "alternates": []
+    },
+    {
+      "id": "e3", "name": "Esame", "pos": { "x": 480, "y": 240 }, "weak": true,
+      "attributes": [
+        { "id": "a3", "name": "Data", "card": "1,1", "type": "DATE", "angle": -1.5707963267948966 },
+        { "id": "a4", "name": "Voto", "card": "1,1", "type": "INT", "angle": 1.5707963267948966 }
+      ],
+      "primary": { "attributeIds": ["a3"], "externalVia": ["r1", "r2"] }, "alternates": []
+    }
+  ],
+  "relationships": [
+    {
+      "id": "r1", "name": "sostiene", "pos": { "x": 160, "y": 240 },
+      "participants": [{ "entityId": "e1", "min": 0, "max": "N" }, { "entityId": "e3", "min": 1, "max": 1 }],
+      "attributes": []
+    },
+    {
+      "id": "r2", "name": "riguarda", "pos": { "x": 800, "y": 240 },
+      "participants": [{ "entityId": "e2", "min": 0, "max": "N" }, { "entityId": "e3", "min": 1, "max": 1 }],
+      "attributes": []
+    }
+  ],
+  "generalizations": []
+}

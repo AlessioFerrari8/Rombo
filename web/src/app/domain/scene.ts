@@ -1,5 +1,5 @@
 import {
-  ATTR_STICK, AttrGeom, Bounds, Box, IsaGeom, attributeGeometry, boxBounds, compositeGeometry, entityBox, generalizationGeometry, labelBounds,
+  ATTR_STICK, AttrGeom, identifierArc, Bounds, Box, IsaGeom, attributeGeometry, boxBounds, compositeGeometry, entityBox, generalizationGeometry, labelBounds,
   participantGeometry, relBox, selfLoopGeometry, unionBounds,
 } from './geometry';
 import { AttrCard, Diagram, Entity, Id, Point, Relationship, isWeak } from './model';
@@ -30,8 +30,11 @@ export interface LinkView {
 }
 export interface IsaView { id: Id; geom: IsaGeom; label: string; selected: boolean; error: boolean }
 export interface IdBarView { entityId: Id; points: Point[]; end: Point }
-/** Parte esterna dell'identificatore di una debole: taglietto dal ramo identificante, col pallino pieno. */
-export interface ExtIdView { entityId: Id; relId: Id; from: Point; dot: Point }
+/**
+ * Parte esterna dell'identificatore di una debole, col pallino pieno in fondo (`dot`, ultimo punto):
+ * con un ramo identificante un taglietto perpendicolare al ramo, con piu' rami un arco unico che li attraversa.
+ */
+export interface ExtIdView { entityId: Id; relIds: Id[]; points: Point[]; dot: Point }
 export interface Scene {
   entities: ShapeView[];
   relationships: ShapeView[];
@@ -113,9 +116,9 @@ export function buildScene(d: Diagram, issues: Issue[], selection: ReadonlySet<I
       const k = same.indexOf(p);
       const spread = same.length > 1 ? (k - (same.length - 1) / 2) * 0.5 : 0;
       const ent = d.entities.find((e) => e.id === p.entityId);
-      // sul ramo identificante c'e' il taglietto a TICK_AT dall'entita': la cardinalita' va oltre
-      const ticked = !!ent?.primary?.externalVia.includes(r.id);
-      const g = loop ? loop[index] : participantGeometry(rb, eb, spread, ticked ? TICK_AT + 4 : 0);
+      // attorno a una debole passano il taglietto o l'arco, a TICK_AT dal bordo: la cardinalita' va oltre
+      const ticked = (ent?.primary?.externalVia.length ?? 0) > 0;
+      const g = loop ? loop[index] : participantGeometry(rb, eb, spread, ticked ? TICK_AT + 12 : 0);
       linkEnd.set(`${r.id}|${p.entityId}`, { from: g.points[g.points.length - 2], to: g.to });
       links.push({
         key: `${r.id}:${index}`, relId: r.id, index, from: g.from, to: g.to, points: g.points, card: g.card,
@@ -165,24 +168,43 @@ export function buildScene(d: Diagram, issues: Issue[], selection: ReadonlySet<I
   // perpendicolare al ramo col pallino pieno, dal lato dove non tocca attributi ne' cardinalita'
   const extIds: ExtIdView[] = [];
   for (const e of d.entities) {
-    for (const rid of e.primary?.externalVia ?? []) {
+    const via = e.primary?.externalVia ?? [];
+    const branches = via.flatMap((rid) => {
       const l = linkEnd.get(`${rid}|${e.id}`);
-      const view = links.find((x) => x.relId === rid && x.to === l?.to);
-      if (!l || !view) continue;
+      const view = l && links.find((x) => x.relId === rid && x.to === l.to);
+      return l && view ? [{ rid, l, view }] : [];
+    });
+    if (!branches.length) continue;
+    const mine = attributes.filter((a) => a.ownerId === e.id);
+    const attrObstacles = mine.flatMap((a) => [a.geom.dot, a.geom.label, { x: (a.geom.from.x + a.geom.dot.x) / 2, y: (a.geom.from.y + a.geom.dot.y) / 2 }]);
+    const unit = (l: { from: Point; to: Point }) => {
       const len = Math.hypot(l.from.x - l.to.x, l.from.y - l.to.y) || 1;
-      const ux = (l.from.x - l.to.x) / len;
-      const uy = (l.from.y - l.to.y) / len;
+      return { ux: (l.from.x - l.to.x) / len, uy: (l.from.y - l.to.y) / len };
+    };
+    if (branches.length === 1) {
+      const { rid, l, view } = branches[0];
+      const { ux, uy } = unit(l);
       const from = { x: l.to.x + ux * TICK_AT, y: l.to.y + uy * TICK_AT };
-      const obstacles: Point[] = [
-        view.card,
-        ...attributes.filter((a) => a.ownerId === e.id).flatMap((a) => [a.geom.dot, a.geom.label, { x: (a.geom.from.x + a.geom.dot.x) / 2, y: (a.geom.from.y + a.geom.dot.y) / 2 }]),
-      ];
+      const obstacles = [view.card, ...attrObstacles];
       const clearance = (q: Point) => Math.min(...obstacles.map((o) => Math.hypot(o.x - q.x, o.y - q.y)));
       // di preferenza dalla parte opposta alla cardinalita' (che sta sul lato (-uy, ux))
       const [first, second] = [-1, 1].map((k) => ({ x: from.x - uy * k * TICK_LEN, y: from.y + ux * k * TICK_LEN }));
       const dot = clearance(second) > clearance(first) + 6 ? second : first;
-      extIds.push({ entityId: e.id, relId: rid, from, dot });
+      extIds.push({ entityId: e.id, relIds: [rid], points: [from, dot], dot });
+      continue;
     }
+    // l'arco non deve toccare cardinalita' e attributi, ne' attraversare i rami non identificanti
+    const others = links.filter((x) => x.to && linkEnd.get(`${x.relId}|${e.id}`)?.to === x.to && !via.includes(x.relId));
+    const obstacles = [
+      ...links.filter((x) => branches.some((b) => b.view === x) || others.includes(x)).map((x) => x.card),
+      ...attrObstacles,
+      ...others.map((x) => {
+        const { ux, uy } = unit({ from: x.points[x.points.length - 2], to: x.to });
+        return { x: x.to.x + ux * TICK_AT, y: x.to.y + uy * TICK_AT };
+      }),
+    ];
+    const arc = identifierArc(boxes.get(e.id)!, branches.map((b) => ({ from: b.l.from, to: b.l.to })), obstacles);
+    extIds.push({ entityId: e.id, relIds: branches.map((b) => b.rid), points: arc.points, dot: arc.dot });
   }
 
   const isas: IsaView[] = [];
@@ -206,7 +228,7 @@ export function buildScene(d: Diagram, issues: Issue[], selection: ReadonlySet<I
     parts.push({ minX: c.x - rx, minY: c.y - ry, maxX: c.x + rx, maxY: c.y + ry });
     for (const p of a.composite.parts) parts.push(labelBounds(p.geom, p.text));
   }
-  for (const t of extIds) parts.push({ minX: t.dot.x - 6, minY: t.dot.y - 6, maxX: t.dot.x + 6, maxY: t.dot.y + 6 });
+  for (const t of extIds) for (const p of t.points) parts.push({ minX: p.x - 6, minY: p.y - 6, maxX: p.x + 6, maxY: p.y + 6 });
   for (const l of links) {
     parts.push({ minX: l.card.x - 20, minY: l.card.y - 10, maxX: l.card.x + 20, maxY: l.card.y + 10 });
     for (const pt of l.points) parts.push({ minX: pt.x, minY: pt.y, maxX: pt.x, maxY: pt.y });

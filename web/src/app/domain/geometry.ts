@@ -219,6 +219,78 @@ export function snapAngle(angle: number, tolerance = 0.1): number {
   return Math.abs(angle - k * q) <= tolerance ? k * q : angle;
 }
 
+/** Arco dell'identificatore esterno: distanza dal bordo dell'entita' (di lato e sopra/sotto) e "squadratura" della curva. */
+const ARC_GAP_X = 17;
+const ARC_GAP_Y = 12;
+const ARC_N = 3.6;
+const ARC_STEP = 0.03;
+const ARC_OVER = 0.14;
+const ARC_TAIL = 0.42;
+
+export interface ArcGeom {
+  /** Dalla coda opposta fino al pallino, che e' l'ultimo punto. */
+  points: Point[];
+  dot: Point;
+  /** Dove l'arco incontra ogni ramo. */
+  crossings: Point[];
+}
+
+/**
+ * Identificatore esterno con piu' rami (ESAME fra STUDENTE e CORSO): un arco unico che gira attorno
+ * all'entita' poco fuori dal bordo (una superellisse, fra un'ellisse e un rettangolo arrotondato), attraversa
+ * tutti i rami e prosegue oltre uno dei due estremi fino al pallino. Fra i giri possibili sceglie il
+ * piu' corto che non passa vicino agli ostacoli, e mette il pallino dalla parte piu' libera.
+ */
+export function identifierArc(box: Box, branches: Array<{ from: Point; to: Point }>, obstacles: Point[]): ArcGeom {
+  const a = box.w / 2 + ARC_GAP_X;
+  const b = box.h / 2 + ARC_GAP_Y;
+  const f = (p: Point) => Math.abs((p.x - box.x) / a) ** ARC_N + Math.abs((p.y - box.y) / b) ** ARC_N;
+  const at = (th: number): Point => {
+    const c = Math.cos(th);
+    const s = Math.sin(th);
+    const t = (Math.abs(c / a) ** ARC_N + Math.abs(s / b) ** ARC_N) ** (-1 / ARC_N);
+    return { x: box.x + c * t, y: box.y + s * t };
+  };
+  const lerp = (p: Point, q: Point, k: number): Point => ({ x: p.x + (q.x - p.x) * k, y: p.y + (q.y - p.y) * k });
+  const crossings = branches.map(({ from, to }) => {
+    if (f(from) <= 1) return from;
+    let lo = 0;
+    let hi = 1;
+    for (let i = 0; i < 40; i++) {
+      const mid = (lo + hi) / 2;
+      if (f(lerp(to, from, mid)) < 1) lo = mid;
+      else hi = mid;
+    }
+    return lerp(to, from, (lo + hi) / 2);
+  });
+  const TAU = 2 * Math.PI;
+  const angles = [...new Set(crossings.map((p) => ((Math.atan2(p.y - box.y, p.x - box.x) % TAU) + TAU) % TAU))].sort((x, y) => x - y);
+  const sample = (from: number, to: number): Point[] => {
+    const n = Math.max(2, Math.ceil(Math.abs(to - from) / ARC_STEP));
+    return Array.from({ length: n + 1 }, (_, i) => at(from + ((to - from) * i) / n));
+  };
+  const clearance = (pts: Point[]) =>
+    Math.min(60, ...pts.flatMap((p) => obstacles.map((o) => Math.hypot(o.x - p.x, o.y - p.y))));
+  // ogni giro possibile lascia fuori uno degli spazi fra due rami consecutivi
+  let best: { start: number; end: number; score: number } | null = null;
+  for (let i = 0; i < angles.length; i++) {
+    const next = (i + 1) % angles.length;
+    const gap = angles.length === 1 ? TAU : (angles[next] - angles[i] + TAU) % TAU;
+    const start = angles[next];
+    const end = start + (TAU - gap);
+    const clr = clearance(sample(start - ARC_OVER, end + ARC_OVER));
+    const score = end - start + (clr < 12 ? 10 : 0) - clr / 1000;
+    if (!best || score < best.score) best = { start, end, score };
+  }
+  const { start, end } = best!;
+  const dotAtStart = at(start - ARC_OVER - ARC_TAIL);
+  const dotAtEnd = at(end + ARC_OVER + ARC_TAIL);
+  const points = clearance([dotAtStart]) > clearance([dotAtEnd])
+    ? sample(start - ARC_OVER - ARC_TAIL, end + ARC_OVER).reverse()
+    : sample(start - ARC_OVER, end + ARC_OVER + ARC_TAIL);
+  return { points, dot: points[points.length - 1], crossings };
+}
+
 export interface IsaGeom {
   lines: Array<[Point, Point]>;
   arrow: { tip: Point; left: Point; right: Point };

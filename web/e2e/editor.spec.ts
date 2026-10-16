@@ -202,11 +202,11 @@ test("entità debole: taglietto col pallino sul ramo identificante, senza errori
   await expect(page.locator('[data-rel="possiede"] .er-kind')).toHaveText('1:N');
   await expect(page.locator('[data-rel="possiede"] .er-rel-weak')).toHaveCount(1);
   // il taglietto parte dal ramo, fuori da «Auto», ed e' perpendicolare al ramo (orizzontale)
-  const tick = page.locator('[data-extid] line');
+  const tick = page.locator('[data-extid] polyline');
   await expect(tick).toHaveCount(1);
   await expect(page.locator('[data-extid] circle.er-dot.is-key')).toHaveCount(1);
   await expect(page.locator('[data-attr="Targa"] circle.er-dot.is-key')).toHaveCount(1);
-  const [x1, y1, x2, y2] = await tick.evaluate((l) => ['x1', 'y1', 'x2', 'y2'].map((a) => Number(l.getAttribute(a))));
+  const [[x1, y1], [x2, y2]] = await tick.evaluate((l) => l.getAttribute('points')!.trim().split(/\s+/).map((p) => p.split(',').map(Number)));
   expect(x1).toBe(x2);
   expect(Math.abs(y2 - y1)).toBeGreaterThan(10);
   const autoX = Number(await page.locator('[data-entity="Auto"] rect.er-entity-shape').getAttribute('x'));
@@ -233,4 +233,23 @@ test('le linee rombo-entità sono segmenti dritti, anche dopo il layout automati
     const dy = Math.abs(y2 - y1);
     expect(dx === 0 || dy === 0 || Math.min(dx, dy) > 20).toBe(true);
   }
+});
+
+test("entità debole con due identificanti: un arco unico col pallino che attraversa i due rami", async ({ page }) => {
+  await page.goto('/');
+  await page.locator('input[type=file]').setInputFiles(path.join(__dirname, 'fixtures', 'esame.json'));
+  await expect(page.getByRole('application', { name: 'Diagramma entità-relazione' })).toBeVisible();
+  await expect(page.locator('[data-rel="sostiene"] .er-rel-weak')).toHaveCount(1);
+  await expect(page.locator('[data-rel="riguarda"] .er-rel-weak')).toHaveCount(1);
+  const arc = page.locator('[data-extid][data-arc] polyline');
+  await expect(arc).toHaveCount(1);
+  await expect(page.locator('[data-extid][data-arc] circle.er-dot.is-key')).toHaveCount(1);
+  const pts = await arc.evaluate((l) => l.getAttribute('points')!.trim().split(/\s+/).map((p) => p.split(',').map(Number)));
+  expect(pts.length).toBeGreaterThan(8);
+  // passa sopra Esame (fra la scatola e «Data»), dove stanno i due rami
+  const top = Number(await page.locator('[data-entity="Esame"] rect.er-entity-shape').getAttribute('y'));
+  expect(Math.min(...pts.map((p) => p[1]))).toBeLessThan(top);
+  await expect(page.getByRole('tab', { name: /Problemi/ })).not.toContainText(/\d/);
+  await page.getByRole('tab', { name: 'SQL' }).click();
+  await expect(page.locator('pre code')).toContainText('PRIMARY KEY ("Data", "Matricola_Studente", "Codice_Corso")');
 });
