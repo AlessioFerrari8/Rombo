@@ -1,0 +1,64 @@
+# Rombo Light (maturita'): solo il modello ER, senza modello logico ne' SQL.
+# Stesso pacchetto della completa (electron-builder.yml: tenerli allineati), con identita' sua per installarle
+# tutte e due. Non usa «extends»: electron-builder concatena gli array e fileAssociations verrebbe doppio.
+# La build web deve essere quella light (npm run web:build:light): ci pensano gli script dist:*:light.
+appId: it.alessio.rombo.light
+productName: Rombo Light
+executableName: rombo-light
+copyright: Copyright © 2026 Alessio Ferrari
+directories:
+  output: release-light
+  buildResources: build
+files:
+  - electron/**
+  - web/dist/frontend/browser/**
+  - package.json
+asar: true
+artifactName: Rombo-Light-${version}-${os}-${arch}.${ext}
+
+# finisce nel package.json del pacchetto: electron/edition.js lo legge e accende la modalita' Light
+extraMetadata:
+  name: rombo-light
+  rombo:
+    edition: light
+
+# stesso formato .rombo della completa (i file passano da una all'altra), ma un tipo di documento suo:
+# con tutte e due installate «Apri con» le propone entrambe e disinstallarne una non tocca l'altra
+fileAssociations:
+  - ext: rombo
+    name: Diagramma Rombo Light
+    description: Diagramma entità-relazione Rombo
+    mimeType: application/x-rombo
+    role: Editor
+
+win:
+  icon: build/icon.ico
+  target:
+    - { target: nsis, arch: [x64] }
+    - { target: msi, arch: [x64] }
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false
+msi:
+  oneClick: false
+  perMachine: false
+
+linux:
+  icon: build/icon.png
+  executableName: rombo-light
+  category: Development
+  synopsis: Editor di diagrammi entità-relazione (edizione Light)
+  description: Editor di diagrammi entità-relazione in notazione Chen, con validazione. Edizione Light per la maturità, senza schema logico né SQL. Funziona offline.
+  maintainer: Alessio Ferrari <alessioferrari374@gmail.com>
+  target:
+    - { target: AppImage, arch: [x64] }
+    - { target: deb, arch: [x64] }
+
+mac:
+  icon: build/icon.icns
+  category: public.app-category.developer-tools
+  target:
+    - { target: dmg, arch: [x64, arm64] }
+dmg:
+  title: Rombo Light ${version}

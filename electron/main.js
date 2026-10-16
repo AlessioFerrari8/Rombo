@@ -6,6 +6,14 @@ const { pathToFileURL } = require('node:url');
 const { filesFromArgv, readDiagramFile, validateSavePayload, withDiagramExtension } = require('./files');
 const { loadWindowState, saveWindowState } = require('./window-state');
 const { RELEASES_PAGE, checkForUpdate } = require('./updates');
+const { resolveEdition } = require('./edition');
+
+const EDITION = resolveEdition(require('../package.json'), process.env, process.argv);
+// Rombo Light ha nome e dati suoi (IndexedDB, finestra, istanza singola): convive con la completa.
+if (EDITION.light) {
+  app.setName(EDITION.productName);
+  app.setPath('userData', path.join(app.getPath('appData'), EDITION.userDataName));
+}
 
 const SCHEME = 'app';
 const HOST = 'rombo';
@@ -157,7 +165,7 @@ function createWindow() {
     minHeight: 600,
     show: false,
     backgroundColor: '#faf6ee',
-    title: 'Rombo',
+    title: EDITION.productName,
     icon: path.join(__dirname, '..', 'build', 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
@@ -247,10 +255,10 @@ function buildMenu() {
       ],
     },
     { role: 'windowMenu' },
-    {
-      label: 'Aiuto',
-      submenu: [{ label: 'Cerca aggiornamenti…', click: () => void checkUpdates(true) }],
-    },
+    // Light (maturita'): niente rete e niente dialog a sorpresa, quindi niente aggiornamenti
+    ...(EDITION.updates
+      ? [{ label: 'Aiuto', submenu: [{ label: 'Cerca aggiornamenti…', click: () => void checkUpdates(true) }] }]
+      : []),
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
@@ -282,7 +290,7 @@ app.whenReady().then(() => {
   // Windows/Linux: file passati all'avvio (doppio clic, "Apri con")
   pendingFiles.push(...filesFromArgv(process.argv, process.cwd()));
   createWindow();
-  setTimeout(() => void checkUpdates(false), 5000);
+  if (EDITION.updates) setTimeout(() => void checkUpdates(false), 5000);
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });

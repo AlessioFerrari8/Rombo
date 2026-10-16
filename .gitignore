@@ -8,3 +8,4 @@ release/
 .env
 .superpowers/
 web/test-results/
+release-light/
