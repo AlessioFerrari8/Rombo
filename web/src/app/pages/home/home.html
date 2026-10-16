@@ -7,7 +7,7 @@
           <path d="M23 6l7 10-7 10-7-10z" fill="currentColor" class="text-highlight" />
           <path d="M23 6l7 10-7 10-7-10z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" class="text-ink" />
         </svg>
-        <span class="ui-brand-name text-xl">Rombo</span>
+        <span class="ui-brand-name text-xl">{{ editionName }}</span>
       </span>
       <button type="button" class="ui-btn ui-btn-ghost ui-btn-icon ml-auto" (click)="theme.toggle()"
         [attr.aria-label]="theme.theme() === 'quaderno' ? 'Passa al tema scuro' : 'Passa al tema chiaro'">

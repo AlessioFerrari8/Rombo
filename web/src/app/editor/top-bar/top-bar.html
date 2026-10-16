@@ -5,7 +5,7 @@
       <path d="M23 6l7 10-7 10-7-10z" fill="currentColor" class="text-highlight" />
       <path d="M23 6l7 10-7 10-7-10z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" class="text-ink" />
     </svg>
-    <span class="ui-brand-name hidden xl:inline">Rombo</span>
+    <span class="ui-brand-name hidden xl:inline">{{ editionName }}</span>
   </a>
   <span class="hidden h-5 w-px shrink-0 bg-line sm:block" aria-hidden="true"></span>
   <div class="flex min-w-0 flex-1 items-center gap-2">
@@ -29,10 +29,7 @@
       <span class="ui-status hidden md:inline-flex" role="status"><span class="ui-spinner size-3 border-[1.5px]" aria-hidden="true"></span>Sincronizzazione…</span>
     }
   </div>
-  <div class="ui-segmented" role="group" aria-label="Tipo di diagramma">
-    <button type="button" class="ui-segment" [class.is-active]="store.mode() === 'er'" [attr.aria-pressed]="store.mode() === 'er'" (click)="store.setMode('er')">ER</button>
-    <button type="button" class="ui-segment" [class.is-active]="store.mode() === 'logical'" [attr.aria-pressed]="store.mode() === 'logical'" (click)="store.setMode('logical')">Logico</button>
-  </div>
+  <app-mode-switch />
   <div class="ui-btn-group is-quiet">
     <button type="button" class="ui-btn ui-btn-ghost ui-btn-sm ui-btn-icon" [disabled]="!store.canUndo()" (click)="store.undo()" title="Annulla (Ctrl+Z)" aria-label="Annulla">
       <svg viewBox="0 0 24 24" class="size-[1.125rem]" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14L4 9l5-5" /><path d="M4 9h10a6 6 0 010 12h-3" /></svg>
@@ -79,25 +76,7 @@
           File diagramma ({{ nativeSave ? '.rombo' : '.er.json' }})
         </button>
       </li>
-      <li class="ui-menu-title">Schema</li>
-      <li>
-        <button type="button" class="ui-menu-item" [disabled]="!store.schema()" (click)="exportText('logical')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 6h16M4 12h10M4 18h13" /></svg>
-          Schema logico (.txt)
-        </button>
-      </li>
-      <li>
-        <button type="button" class="ui-menu-item" [disabled]="!store.schema()" (click)="exportText('postgres')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3" /><path d="M5 6v12c0 1.66 3.13 3 7 3s7-1.34 7-3V6M5 12c0 1.66 3.13 3 7 3s7-1.34 7-3" /></svg>
-          SQL PostgreSQL
-        </button>
-      </li>
-      <li>
-        <button type="button" class="ui-menu-item" [disabled]="!store.schema()" (click)="exportText('mysql')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3" /><path d="M5 6v12c0 1.66 3.13 3 7 3s7-1.34 7-3V6M5 12c0 1.66 3.13 3 7 3s7-1.34 7-3" /></svg>
-          SQL MySQL
-        </button>
-      </li>
+      <app-logical-export-items />
     </ul>
   </div>
   <button type="button" class="ui-btn ui-btn-ghost ui-btn-sm ui-btn-icon" (click)="theme.toggle()"

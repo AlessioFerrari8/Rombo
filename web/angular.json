@@ -70,6 +70,22 @@
               "optimization": false,
               "extractLicenses": false,
               "sourceMap": true
+            },
+            "light": {
+              "fileReplacements": [
+                {
+                  "replace": "src/app/edition/edition.ts",
+                  "with": "src/app/edition/edition.light.ts"
+                },
+                {
+                  "replace": "src/app/edition/logical-domain.ts",
+                  "with": "src/app/edition/logical-domain.light.ts"
+                },
+                {
+                  "replace": "src/app/edition/logical-ui.ts",
+                  "with": "src/app/edition/logical-ui.light.ts"
+                }
+              ]
             }
           },
           "defaultConfiguration": "production"
@@ -82,6 +98,9 @@
             },
             "development": {
               "buildTarget": "frontend:build:development"
+            },
+            "light": {
+              "buildTarget": "frontend:build:development,light"
             }
           },
           "defaultConfiguration": "development",

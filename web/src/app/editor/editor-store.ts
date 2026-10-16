@@ -8,18 +8,16 @@ import {
 import {
   History, canRedo, canUndo, commit, commitPreview, initHistory, preview, redo, undo,
 } from '../domain/history';
-import { LogicalSchema, toLogical } from '../domain/logical';
 import {
-  addForeignKey, checkForeignKey, deleteForeignKey, deleteTables, moveTables, replaceLogical, setTablePositions as setLogicalPositions,
-} from '../domain/logical-commands';
-import { generateLogical, toTables } from '../domain/logical-schema';
+  LogicalSchema, addForeignKey, checkForeignKey, computeLogicalLayout, deleteForeignKey, deleteTables, generateLogical, moveTables,
+  replaceLogical, setTablePositions as setLogicalPositions, toLogical, toTables, validateLogical,
+} from '../edition/logical-domain';
+import { EDITION_CONFIG } from '../edition/edition-token';
 import {
   Diagram, Id, Point, entityById, findForeignKey, findPart, kindOf, logicalKindOf, relationshipById, tableById,
 } from '../domain/model';
 import { Issue, validate } from '../domain/validate';
-import { validateLogical } from '../domain/validate-logical';
 import { computeLayout } from './layout';
-import { computeLogicalLayout } from './logical-layout';
 
 export type Tool = 'select' | 'entity' | 'relationship' | 'attribute' | 'isa' | 'table';
 export type Mode = 'er' | 'logical';
@@ -30,13 +28,18 @@ export type SaveState = 'saved' | 'saving' | 'error';
 export class EditorStore {
   private readonly local = inject(LocalDiagrams);
   private readonly toasts = inject(Toasts);
+  private readonly edition = inject(EDITION_CONFIG);
 
   readonly history = signal<History>(initHistory(createDiagram()));
   readonly diagram = computed(() => this.history().present);
   readonly selection = signal<ReadonlySet<Id>>(new Set());
   readonly tool = signal<Tool>('select');
   readonly readonly = signal(false);
-  readonly issues = computed(() => validate(this.diagram()));
+  readonly issues = computed(() => {
+    const hidden = new Set(this.edition.hiddenIssueCodes);
+    const all = validate(this.diagram());
+    return hidden.size ? all.filter((i) => !hidden.has(i.code)) : all;
+  });
   readonly errorCount = computed(() => this.issues().filter((i) => i.severity === 'error').length);
   readonly logical = computed(() => (this.errorCount() ? null : toLogical(this.diagram())));
   readonly mode = signal<Mode>('er');
@@ -225,7 +228,8 @@ export class EditorStore {
   }
 
   setMode(m: Mode): void {
-    if (this.mode() === m) return;
+    // in Rombo Light il modo Logico non esiste
+    if (this.mode() === m || (m === 'logical' && !this.edition.logical)) return;
     this.mode.set(m);
     this.cancelTool();
     this.selection.set(new Set());

@@ -5,8 +5,11 @@
         <svg viewBox="0 0 24 24" class="size-7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 12.5l4 4 8-9" /></svg>
       </span>
       <p class="font-display text-lg font-bold">Nessun problema</p>
-      <p class="text-sm text-ink-2">{{ store.mode() === 'logical' ? 'Lo schema logico è pronto per l\'esportazione.' : 'Il diagramma è pronto per lo schema logico.' }}</p>
-      <button type="button" class="ui-btn ui-btn-primary ui-btn-sm mt-2" (click)="store.panelTab.set('logical')">Vedi lo schema logico</button>
+      @if (edition.logical) {
+        <app-logical-ready />
+      } @else {
+        <p class="text-sm text-ink-2">Il diagramma ER è corretto.</p>
+      }
     </div>
   } @else {
     <p class="text-[0.8125rem] text-ink-2">

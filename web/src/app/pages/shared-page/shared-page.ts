@@ -1,3 +1,4 @@
+import { EDITION_CONFIG } from '../../edition/edition-token';
 import { HttpErrorResponse, httpResource } from '@angular/common/http';
 import { Component, computed, effect, inject, input } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
@@ -19,6 +20,7 @@ import { SidePanel } from '../../editor/side-panel/side-panel';
   providers: [EditorStore],
 })
 export class SharedPage {
+  protected readonly editionName = inject(EDITION_CONFIG).name;
   readonly token = input.required<string>();
   protected readonly store = inject(EditorStore);
   private readonly local = inject(LocalDiagrams);

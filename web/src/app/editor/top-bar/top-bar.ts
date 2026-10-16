@@ -1,3 +1,4 @@
+import { EDITION_CONFIG } from '../../edition/edition-token';
 import { AccountMenu } from '../../shared/account-menu/account-menu';
 import { isDesktop } from '../../core/platform';
 import { Component, inject, signal } from '@angular/core';
@@ -9,16 +10,16 @@ import { Sync } from '../../core/sync';
 import { Toasts } from '../../core/toasts';
 import { setTitle } from '../../domain/commands';
 import { sceneExportBounds } from '../../domain/scene';
-import { toDDL } from '../../domain/ddl';
-import { formatLogical } from '../../domain/logical';
-import { logicalBounds } from '../../domain/logical-geometry';
+import { logicalBounds } from '../../edition/logical-domain';
+import { LogicalExportItems, ModeSwitch } from '../../edition/logical-ui';
 import { serializeDiagram } from '../../domain/serialize';
 import { EditorStore } from '../editor-store';
 import { ShareDialog } from '../share-dialog/share-dialog';
 import { exportSvgString, svgToPng } from '../exporter';
 
-@Component({ selector: 'app-top-bar', templateUrl: './top-bar.html', imports: [RouterLink, AccountMenu, ShareDialog] })
+@Component({ selector: 'app-top-bar', templateUrl: './top-bar.html', imports: [RouterLink, AccountMenu, ShareDialog, ModeSwitch, LogicalExportItems] })
 export class TopBar {
+  protected readonly editionName = inject(EDITION_CONFIG).name;
   protected readonly desktop = isDesktop;
   protected readonly store = inject(EditorStore);
   protected readonly theme = inject(ThemeService);
@@ -68,12 +69,5 @@ export class TopBar {
       return;
     }
     downloadBlob(new Blob([serializeDiagram(this.store.diagram())], { type: 'application/json' }), `${this.base()}.er.json`);
-  }
-
-  exportText(kind: 'logical' | 'postgres' | 'mysql'): void {
-    const l = this.store.schema();
-    if (!l) return;
-    if (kind === 'logical') downloadBlob(new Blob([formatLogical(l)], { type: 'text/plain;charset=utf-8' }), `${this.base()}-schema.txt`);
-    else downloadBlob(new Blob([toDDL(l, kind)], { type: 'application/sql' }), `${this.base()}-${kind}.sql`);
   }
 }

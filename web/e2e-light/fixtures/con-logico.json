@@ -1,0 +1,144 @@
+{
+  "version": 1,
+  "id": "fixture-con-logico",
+  "title": "Con schema logico",
+  "entities": [
+    {
+      "id": "e1",
+      "name": "Proprietario",
+      "pos": {
+        "x": 200,
+        "y": 200
+      },
+      "attributes": [
+        {
+          "id": "a1",
+          "name": "CF",
+          "card": "1,1",
+          "type": "CHAR(16)",
+          "angle": -1.57
+        }
+      ],
+      "primary": {
+        "attributeIds": [
+          "a1"
+        ],
+        "externalVia": []
+      },
+      "alternates": []
+    },
+    {
+      "id": "e2",
+      "name": "Auto",
+      "pos": {
+        "x": 600,
+        "y": 200
+      },
+      "attributes": [
+        {
+          "id": "a2",
+          "name": "Targa",
+          "card": "1,1",
+          "type": "CHAR(7)",
+          "angle": -1.57
+        }
+      ],
+      "primary": {
+        "attributeIds": [
+          "a2"
+        ],
+        "externalVia": []
+      },
+      "alternates": []
+    }
+  ],
+  "relationships": [
+    {
+      "id": "r1",
+      "name": "possiede",
+      "pos": {
+        "x": 400,
+        "y": 200
+      },
+      "participants": [
+        {
+          "entityId": "e1",
+          "min": 1,
+          "max": "N"
+        },
+        {
+          "entityId": "e2",
+          "min": 1,
+          "max": 1
+        }
+      ],
+      "attributes": []
+    }
+  ],
+  "generalizations": [],
+  "logical": {
+    "tables": [
+      {
+        "id": "t1",
+        "name": "Proprietario",
+        "pos": {
+          "x": 100,
+          "y": 100
+        },
+        "columns": [
+          {
+            "id": "c1",
+            "name": "CF",
+            "type": "CHAR(16)",
+            "nullable": false
+          }
+        ],
+        "primaryKey": [
+          "c1"
+        ],
+        "uniques": [],
+        "foreignKeys": [],
+        "checks": []
+      },
+      {
+        "id": "t2",
+        "name": "Auto",
+        "pos": {
+          "x": 400,
+          "y": 100
+        },
+        "columns": [
+          {
+            "id": "c2",
+            "name": "Targa",
+            "type": "CHAR(7)",
+            "nullable": false
+          },
+          {
+            "id": "c3",
+            "name": "CF_Proprietario",
+            "type": "CHAR(16)",
+            "nullable": false
+          }
+        ],
+        "primaryKey": [
+          "c2"
+        ],
+        "uniques": [],
+        "foreignKeys": [
+          {
+            "id": "f1",
+            "columnIds": [
+              "c3"
+            ],
+            "refTableId": "t1",
+            "refColumnIds": [
+              "c1"
+            ]
+          }
+        ],
+        "checks": []
+      }
+    ]
+  }
+}

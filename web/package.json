@@ -7,7 +7,10 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "build:light": "ng build --configuration production,light",
+    "start:light": "ng serve --configuration light --port 4330",
+    "e2e:light": "playwright test -c playwright.light.config.ts"
   },
   "private": true,
   "packageManager": "npm@11.16.0",

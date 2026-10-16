@@ -5,6 +5,7 @@ import { Auth } from '../../core/auth';
 import { LocalDiagrams } from '../../core/local-diagrams';
 import { Sync } from '../../core/sync';
 import { Toasts } from '../../core/toasts';
+import { EDITION_CONFIG } from '../../edition/edition-token';
 import { EditorStore } from '../editor-store';
 
 type State = 'guest' | 'loading' | 'not-uploaded' | 'none' | 'active' | 'error';
@@ -12,6 +13,7 @@ type State = 'guest' | 'loading' | 'not-uploaded' | 'none' | 'active' | 'error';
 @Component({ selector: 'app-share-dialog', templateUrl: './share-dialog.html', imports: [RouterLink] })
 export class ShareDialog {
   protected readonly auth = inject(Auth);
+  protected readonly edition = inject(EDITION_CONFIG);
   private readonly api = inject(Api);
   private readonly sync = inject(Sync);
   private readonly local = inject(LocalDiagrams);

@@ -139,7 +139,7 @@
       <p class="ui-hint -mt-2">Associazione identificante: la chiave di {{ info.weak }} comprende quella di {{ info.owner }}. Le cardinalità sono libere.</p>
     }
 
-    @if (ambiguousOneToOne(r) && !identifyingInfo(r)) {
+    @if (edition.logical && ambiguousOneToOne(r) && !identifyingInfo(r)) {
       <div class="ui-section">
         <h3 class="ui-section-title">Chiave esterna</h3>
         <p class="ui-hint -mt-1">È un uno-a-uno simmetrico: scegli in quale tabella va la chiave esterna.</p>
@@ -209,15 +209,17 @@
       <label class="ui-choice"><input type="radio" class="ui-radio" name="excl" [checked]="g.exclusive" [disabled]="ro()" (change)="setGen(g, { exclusive: true })" /> Esclusiva (e): al massimo un figlio</label>
       <label class="ui-choice"><input type="radio" class="ui-radio" name="excl" [checked]="!g.exclusive" [disabled]="ro()" (change)="setGen(g, { exclusive: false })" /> Sovrapposta (s)</label>
     </fieldset>
-    <fieldset class="ui-fieldset gap-2">
-      <legend class="ui-legend">Traduzione nello schema logico</legend>
-      @for (s of strategies; track s.value) {
-        <label class="ui-choice items-start rounded-lg border border-line bg-raised px-3 py-2.5 has-[:checked]:border-accent has-[:checked]:bg-accent-soft">
-          <input type="radio" class="ui-radio mt-0.5" name="strategy" [checked]="(g.strategy ?? 'merge-up') === s.value" [disabled]="ro()" (change)="setGen(g, { strategy: s.value })" />
-          <span><strong class="font-bold">{{ s.label }}</strong><br /><span class="text-xs text-ink-2">{{ s.help }}</span></span>
-        </label>
-      }
-    </fieldset>
+    @if (edition.logical) {
+      <fieldset class="ui-fieldset gap-2">
+        <legend class="ui-legend">Traduzione nello schema logico</legend>
+        @for (s of strategies; track s.value) {
+          <label class="ui-choice items-start rounded-lg border border-line bg-raised px-3 py-2.5 has-[:checked]:border-accent has-[:checked]:bg-accent-soft">
+            <input type="radio" class="ui-radio mt-0.5" name="strategy" [checked]="(g.strategy ?? 'merge-up') === s.value" [disabled]="ro()" (change)="setGen(g, { strategy: s.value })" />
+            <span><strong class="font-bold">{{ s.label }}</strong><br /><span class="text-xs text-ink-2">{{ s.help }}</span></span>
+          </label>
+        }
+      </fieldset>
+    }
     <button type="button" class="ui-btn ui-btn-danger ui-btn-sm self-start" [disabled]="ro()" (click)="remove([g.id])">Elimina generalizzazione</button>
   } @else if (attribute(); as found) {
     <header>

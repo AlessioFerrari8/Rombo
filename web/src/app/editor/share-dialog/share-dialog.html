@@ -19,7 +19,7 @@
         <button type="button" class="ui-btn ui-btn-primary self-start" (click)="upload()">Carica nel mio account</button>
       }
       @case ('none') {
-        <p class="ui-modal-body">Chi apre il link vede il diagramma, lo schema logico e l'SQL, ma non può modificarli. Può farsene una copia.</p>
+        <p class="ui-modal-body">Chi apre il link vede il diagramma{{ edition.logical ? ', lo schema logico e l\'SQL' : '' }}, ma non può modificarli. Può farsene una copia.</p>
         <button type="button" class="ui-btn ui-btn-primary self-start" (click)="create()">Crea il link</button>
       }
       @case ('active') {

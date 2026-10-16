@@ -1,3 +1,4 @@
+import { EDITION_CONFIG } from '../../edition/edition-token';
 import { AccountMenu } from '../../shared/account-menu/account-menu';
 import { isDesktop } from '../../core/platform';
 import { DatePipe } from '@angular/common';
@@ -14,6 +15,7 @@ import { DiagramPreview } from '../diagram-preview/diagram-preview';
 
 @Component({ selector: 'app-home', templateUrl: './home.html', imports: [RouterLink, DatePipe, DiagramPreview, AccountMenu] })
 export class Home {
+  protected readonly editionName = inject(EDITION_CONFIG).name;
   protected readonly desktop = isDesktop;
   protected readonly accept = DIAGRAM_FILE_ACCEPT;
   private readonly files = inject(DiagramFiles);

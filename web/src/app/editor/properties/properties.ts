@@ -8,11 +8,13 @@ import {
   generalizationById, relationshipById,
 } from '../../domain/model';
 import { EditorStore } from '../editor-store';
-import { TypePicker } from '../type-picker/type-picker';
+import { EDITION_CONFIG } from '../../edition/edition-token';
+import { TypePicker } from '../../edition/logical-ui';
 
 @Component({ selector: 'app-properties', templateUrl: './properties.html', imports: [TypePicker] })
 export class Properties {
   protected readonly store = inject(EditorStore);
+  protected readonly edition = inject(EDITION_CONFIG);
   protected readonly ro = this.store.readonly;
   protected readonly cards: Array<{ value: AttrCard; label: string }> = [
     { value: '1,1', label: '(1,1)' },
