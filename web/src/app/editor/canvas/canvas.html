@@ -53,6 +53,12 @@
       <polyline class="er-line" [attr.points]="points([...b.points, b.end])" />
       <circle class="er-dot is-key" [attr.cx]="b.end.x" [attr.cy]="b.end.y" r="5" />
     }
+    @for (t of scene().extIds; track t.entityId + t.relId) {
+      <g data-extid>
+        <line class="er-line" [attr.x1]="t.from.x" [attr.y1]="t.from.y" [attr.x2]="t.dot.x" [attr.y2]="t.dot.y" />
+        <circle class="er-dot is-key" [attr.cx]="t.dot.x" [attr.cy]="t.dot.y" r="5" />
+      </g>
+    }
 
     <!-- associazioni -->
     @for (r of scene().relationships; track r.id) {

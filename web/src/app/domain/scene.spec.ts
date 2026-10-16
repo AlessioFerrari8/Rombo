@@ -123,51 +123,78 @@ describe('buildScene', () => {
     expect(s.relationships[0].kindLabel).toBe('1:N');
   });
 
-  it("la cardinalita' della debole non finisce sopra la barra dell'identificatore esterno", () => {
-    for (const [x, y] of [[400, 0], [0, 400]]) {
+  describe("identificatore esterno dell'entità debole: taglietto col pallino sul ramo identificante", () => {
+    // Giocatore (debole, chiave parziale Numero) al centro, Squadra a destra/sinistra/sotto/sopra
+    const weak = (ox: number, oy: number, partial = ['Numero'], wCard: [0 | 1, 1 | 'N'] = [1, 1]) => {
       let d = createDiagram();
-      const g = addEntity(d, { x: 0, y: 0 }, 'Squadra'); d = g.diagram;
-      const rec = addEntity(d, { x: 2 * x, y: 2 * y }, 'Giocatore'); d = rec.diagram;
-      const num = addAttribute(d, rec.id, 'Numero'); d = num.diagram;
-      const r = addRelationship(d, [g.id, rec.id], undefined, 'gioca'); d = r.diagram;
-      d = updateParticipant(d, r.id, 0, { min: 0, max: 'N' });
-      d = updateParticipant(d, r.id, 1, { min: 1, max: 1 });
-      d = setExternalVia(toggleIdentifierAttribute(d, rec.id, num.id), rec.id, [r.id]);
-      const s = buildScene(d, [], new Set());
-      const { card } = s.links[1];
-      const pts = [...s.idBars[0].points, s.idBars[0].end];
-      // nessun tratto della barra passa nel riquadro di «(1,1)» (circa 32x14)
-      for (let i = 1; i < pts.length; i++) {
-        for (let t = 0; t <= 1; t += 0.02) {
-          const x = pts[i - 1].x + (pts[i].x - pts[i - 1].x) * t;
-          const y = pts[i - 1].y + (pts[i].y - pts[i - 1].y) * t;
-          expect(Math.abs(x - card.x) < 16 && Math.abs(y - card.y) < 7).toBe(false);
-        }
+      const w = addEntity(d, { x: 0, y: 0 }, 'Giocatore'); d = w.diagram;
+      const o = addEntity(d, { x: ox, y: oy }, 'Squadra'); d = o.diagram;
+      for (const n of partial) {
+        const a = addAttribute(d, w.id, n); d = toggleIdentifierAttribute(a.diagram, w.id, a.id);
       }
+      d = addAttribute(d, w.id, 'Ruolo').diagram;
+      const r = addRelationship(d, [o.id, w.id], undefined, 'gioca'); d = r.diagram;
+      d = updateParticipant(d, r.id, 0, { min: 0, max: 'N' });
+      d = updateParticipant(d, r.id, 1, { min: wCard[0], max: wCard[1] });
+      d = setExternalVia(d, w.id, [r.id]);
+      return { s: buildScene(d, [], new Set()), w: w.id, r: r.id };
+    };
+    const sides: Array<[string, number, number]> = [['destra', 400, 0], ['sinistra', -400, 0], ['sotto', 0, 400], ['sopra', 0, -400]];
+
+    for (const [side, ox, oy] of sides) {
+      it(`proprietario a ${side}: il taglietto parte dal ramo vicino al bordo, perpendicolare, fuori da tutto`, () => {
+        const { s, w, r } = weak(ox, oy);
+        const link = s.links.find((l) => l.relId === r && l.index === 1)!;
+        expect(s.extIds).toHaveLength(1);
+        const t = s.extIds[0];
+        expect(t).toMatchObject({ entityId: w, relId: r });
+        const ux = (link.from.x - link.to.x) / Math.hypot(link.from.x - link.to.x, link.from.y - link.to.y);
+        const uy = (link.from.y - link.to.y) / Math.hypot(link.from.x - link.to.x, link.from.y - link.to.y);
+        // la base sta sul ramo, a poca distanza dal bordo dell'entita' (verso il rombo)
+        const along = (t.from.x - link.to.x) * ux + (t.from.y - link.to.y) * uy;
+        const across = (t.from.x - link.to.x) * -uy + (t.from.y - link.to.y) * ux;
+        expect(along).toBeGreaterThan(6);
+        expect(along).toBeLessThan(24);
+        expect(Math.abs(across)).toBeLessThan(1e-6);
+        // perpendicolare al ramo, lunga quanto un'asticella
+        const tx = t.dot.x - t.from.x;
+        const ty = t.dot.y - t.from.y;
+        expect(Math.abs(tx * ux + ty * uy)).toBeLessThan(1e-6);
+        expect(Math.hypot(tx, ty)).toBeGreaterThanOrEqual(14);
+        expect(Math.hypot(tx, ty)).toBeLessThanOrEqual(22);
+        // pallino fuori dall'entita', lontano da cardinalita' e attributi
+        const box = s.entities.find((e) => e.id === w)!.box;
+        expect(Math.abs(t.dot.x - box.x) > box.w / 2 + 4 || Math.abs(t.dot.y - box.y) > box.h / 2 + 4).toBe(true);
+        expect(Math.abs(t.dot.x - link.card.x) < 22 && Math.abs(t.dot.y - link.card.y) < 12).toBe(false);
+        for (const a of s.attributes) expect(Math.hypot(a.geom.dot.x - t.dot.x, a.geom.dot.y - t.dot.y)).toBeGreaterThan(14);
+        // la chiave parziale semplice ha il pallino pieno; nessuna barra che gira attorno all'entita'
+        expect(s.attributes.find((a) => a.text === 'Numero')!.key).toBe(true);
+        expect(s.idBars).toEqual([]);
+      });
     }
+
+    it('con qualunque cardinalità, N:N compreso', () => {
+      const { s } = weak(400, 0, ['Numero'], [1, 'N']);
+      expect(s.extIds).toHaveLength(1);
+      expect(s.relationships[0]).toMatchObject({ identifying: true, kindLabel: 'N:N' });
+    });
+
+    it('chiave parziale di più attributi: barra solo fra gli attributi, più il taglietto sul ramo', () => {
+      const { s } = weak(400, 0, ['Numero', 'Nazione']);
+      expect(s.extIds).toHaveLength(1);
+      expect(s.idBars).toHaveLength(1);
+      const link = s.links[1];
+      // la barra non tocca il ramo dell'associazione
+      for (const p of s.idBars[0].points) expect(Math.hypot(p.x - link.to.x, p.y - link.to.y)).toBeGreaterThan(20);
+    });
+
+    it('senza chiave parziale: solo il taglietto', () => {
+      const { s } = weak(400, 0, []);
+      expect(s.extIds).toHaveLength(1);
+      expect(s.idBars).toEqual([]);
+    });
   });
 
-  it("la barra dell'identificatore esterno resta tutta fuori dall'entita', pallino compreso", () => {
-    let d = createDiagram();
-    const g = addEntity(d, { x: 0, y: 0 }, 'Giocatore'); d = g.diagram;
-    const rec = addEntity(d, { x: 400, y: 0 }, 'Record'); d = rec.diagram;
-    const dataAttr = addAttribute(d, rec.id, 'data'); d = dataAttr.diagram;
-    const r = addRelationship(d, [g.id, rec.id], undefined, 'stabilisce'); d = r.diagram;
-    d = updateParticipant(d, r.id, 1, { min: 1, max: 1 });
-    d = toggleIdentifierAttribute(d, rec.id, dataAttr.id);
-    d = setExternalVia(d, rec.id, [r.id]);
-    const s = buildScene(d, [], new Set());
-    const box = s.entities.find((e) => e.name === 'Record')!.box;
-    const inside = (p: { x: number; y: number }) => Math.abs(p.x - box.x) < box.w / 2 && Math.abs(p.y - box.y) < box.h / 2;
-    const bar = s.idBars[0];
-    const pts = [...bar.points, bar.end];
-    for (const pt of pts) expect(inside(pt)).toBe(false);
-    for (let i = 1; i < pts.length; i++) {
-      for (const t of [0.25, 0.5, 0.75]) {
-        expect(inside({ x: pts[i - 1].x + (pts[i].x - pts[i - 1].x) * t, y: pts[i - 1].y + (pts[i].y - pts[i - 1].y) * t })).toBe(false);
-      }
-    }
-  });
 
   it('IS-A come nel libro: freccia vuota sotto il padre, barra e rami verso i figli, sigla (p,s)', () => {
     let d = createDiagram();

@@ -30,6 +30,8 @@ export interface LinkView {
 }
 export interface IsaView { id: Id; geom: IsaGeom; label: string; selected: boolean; error: boolean }
 export interface IdBarView { entityId: Id; points: Point[]; end: Point }
+/** Parte esterna dell'identificatore di una debole: taglietto dal ramo identificante, col pallino pieno. */
+export interface ExtIdView { entityId: Id; relId: Id; from: Point; dot: Point }
 export interface Scene {
   entities: ShapeView[];
   relationships: ShapeView[];
@@ -37,6 +39,7 @@ export interface Scene {
   links: LinkView[];
   isas: IsaView[];
   idBars: IdBarView[];
+  extIds: ExtIdView[];
   bounds: Bounds | null;
 }
 
@@ -70,7 +73,8 @@ export function buildScene(d: Diagram, issues: Issue[], selection: ReadonlySet<I
   const idBars: IdBarView[] = [];
   const pushAttrs = (owner: Entity | Relationship, box: Box, kind: 'rect' | 'rhombus') => {
     const primary = 'primary' in owner ? owner.primary : null;
-    const simpleKey = primary && primary.attributeIds.length === 1 && !primary.externalVia.length ? primary.attributeIds[0] : null;
+    // una sola chiave (anche la chiave parziale di una debole): pallino pieno
+    const simpleKey = primary && primary.attributeIds.length === 1 ? primary.attributeIds[0] : null;
     for (const a of owner.attributes) {
       const text = a.card === '1,1' ? a.name : `${a.name} (${a.card})`;
       const base = { id: a.id, ownerId: owner.id, text, key: a.id === simpleKey, card: a.card, selected: selection.has(a.id), error: errorIds.has(a.id) };
@@ -109,9 +113,9 @@ export function buildScene(d: Diagram, issues: Issue[], selection: ReadonlySet<I
       const k = same.indexOf(p);
       const spread = same.length > 1 ? (k - (same.length - 1) / 2) * 0.5 : 0;
       const ent = d.entities.find((e) => e.id === p.entityId);
-      // la barra di un identificatore esterno composto attraversa il ramo a BAR_GAP dall'entita'
-      const barred = !!ent?.primary?.externalVia.includes(r.id) && ent.primary.attributeIds.length + ent.primary.externalVia.length > 1;
-      const g = loop ? loop[index] : participantGeometry(rb, eb, spread, barred ? BAR_GAP : 0);
+      // sul ramo identificante c'e' il taglietto a TICK_AT dall'entita': la cardinalita' va oltre
+      const ticked = !!ent?.primary?.externalVia.includes(r.id);
+      const g = loop ? loop[index] : participantGeometry(rb, eb, spread, ticked ? TICK_AT + 4 : 0);
       linkEnd.set(`${r.id}|${p.entityId}`, { from: g.points[g.points.length - 2], to: g.to });
       links.push({
         key: `${r.id}:${index}`, relId: r.id, index, from: g.from, to: g.to, points: g.points, card: g.card,
@@ -133,10 +137,10 @@ export function buildScene(d: Diagram, issues: Issue[], selection: ReadonlySet<I
     rv.kindPos = kindLabelPos(b, dirs);
   }
 
-  // identificatori composti o esterni: barra che attraversa le aste e finisce con un pallino pieno
+  // identificatore di piu' attributi: barra che attraversa le loro aste e finisce con un pallino pieno
   for (const e of d.entities) {
     const p = e.primary;
-    if (!p || p.attributeIds.length + p.externalVia.length < 2) continue;
+    if (!p || p.attributeIds.length < 2) continue;
     const members: Array<{ angle: number; point: Point }> = [];
     for (const aid of p.attributeIds) {
       const v = attributes.find((a) => a.id === aid);
@@ -144,18 +148,10 @@ export function buildScene(d: Diagram, issues: Issue[], selection: ReadonlySet<I
       const pt = { x: (v.geom.from.x + v.geom.dot.x) / 2, y: (v.geom.from.y + v.geom.dot.y) / 2 };
       members.push({ angle: Math.atan2(pt.y - e.pos.y, pt.x - e.pos.x), point: pt });
     }
-    for (const rid of p.externalVia) {
-      const l = linkEnd.get(`${rid}|${e.id}`);
-      if (!l) continue;
-      // sul ramo dell'associazione, appena fuori dall'entita' (come a meta' dell'asta di un attributo)
-      const len = Math.hypot(l.from.x - l.to.x, l.from.y - l.to.y) || 1;
-      const pt = { x: l.to.x + ((l.from.x - l.to.x) / len) * (ATTR_STICK / 2), y: l.to.y + ((l.from.y - l.to.y) / len) * (ATTR_STICK / 2) };
-      members.push({ angle: Math.atan2(pt.y - e.pos.y, pt.x - e.pos.x), point: pt });
-    }
+    if (members.length < 2) continue;
     members.sort((a, b) => a.angle - b.angle);
     const box = boxes.get(e.id)!;
     const points = routeAround(box, members.map((m) => m.point));
-    if (members.length < 2) continue;
     const last = points[points.length - 1];
     const r = Math.hypot(last.x - e.pos.x, last.y - e.pos.y);
     const base = Math.atan2(last.y - e.pos.y, last.x - e.pos.x);
@@ -163,6 +159,30 @@ export function buildScene(d: Diagram, issues: Issue[], selection: ReadonlySet<I
       .map((da) => ({ x: e.pos.x + Math.cos(base + da) * r, y: e.pos.y + Math.sin(base + da) * r }))
       .find((c) => !crossesBox(box, last, c)) ?? { x: last.x + (last.x - e.pos.x) * 0.3, y: last.y + (last.y - e.pos.y) * 0.3 };
     idBars.push({ entityId: e.id, points, end });
+  }
+
+  // identificazione esterna: su ogni ramo identificante, appena fuori dall'entita', un taglietto
+  // perpendicolare al ramo col pallino pieno, dal lato dove non tocca attributi ne' cardinalita'
+  const extIds: ExtIdView[] = [];
+  for (const e of d.entities) {
+    for (const rid of e.primary?.externalVia ?? []) {
+      const l = linkEnd.get(`${rid}|${e.id}`);
+      const view = links.find((x) => x.relId === rid && x.to === l?.to);
+      if (!l || !view) continue;
+      const len = Math.hypot(l.from.x - l.to.x, l.from.y - l.to.y) || 1;
+      const ux = (l.from.x - l.to.x) / len;
+      const uy = (l.from.y - l.to.y) / len;
+      const from = { x: l.to.x + ux * TICK_AT, y: l.to.y + uy * TICK_AT };
+      const obstacles: Point[] = [
+        view.card,
+        ...attributes.filter((a) => a.ownerId === e.id).flatMap((a) => [a.geom.dot, a.geom.label, { x: (a.geom.from.x + a.geom.dot.x) / 2, y: (a.geom.from.y + a.geom.dot.y) / 2 }]),
+      ];
+      const clearance = (q: Point) => Math.min(...obstacles.map((o) => Math.hypot(o.x - q.x, o.y - q.y)));
+      // di preferenza dalla parte opposta alla cardinalita' (che sta sul lato (-uy, ux))
+      const [first, second] = [-1, 1].map((k) => ({ x: from.x - uy * k * TICK_LEN, y: from.y + ux * k * TICK_LEN }));
+      const dot = clearance(second) > clearance(first) + 6 ? second : first;
+      extIds.push({ entityId: e.id, relId: rid, from, dot });
+    }
   }
 
   const isas: IsaView[] = [];
@@ -186,6 +206,7 @@ export function buildScene(d: Diagram, issues: Issue[], selection: ReadonlySet<I
     parts.push({ minX: c.x - rx, minY: c.y - ry, maxX: c.x + rx, maxY: c.y + ry });
     for (const p of a.composite.parts) parts.push(labelBounds(p.geom, p.text));
   }
+  for (const t of extIds) parts.push({ minX: t.dot.x - 6, minY: t.dot.y - 6, maxX: t.dot.x + 6, maxY: t.dot.y + 6 });
   for (const l of links) {
     parts.push({ minX: l.card.x - 20, minY: l.card.y - 10, maxX: l.card.x + 20, maxY: l.card.y + 10 });
     for (const pt of l.points) parts.push({ minX: pt.x, minY: pt.y, maxX: pt.x, maxY: pt.y });
@@ -195,10 +216,13 @@ export function buildScene(d: Diagram, issues: Issue[], selection: ReadonlySet<I
       parts.push({ minX: x0, minY: l.rolePos.y - 12, maxX: x0 + w, maxY: l.rolePos.y + 4 });
     }
   }
-  return { entities, relationships, attributes, links, isas, idBars, bounds: unionBounds(parts) };
+  return { entities, relationships, attributes, links, isas, idBars, extIds, bounds: unionBounds(parts) };
 }
 
 const BAR_GAP = ATTR_STICK / 2;
+/** Il taglietto dell'identificatore esterno: distanza dal bordo dell'entita' lungo il ramo, e lunghezza. */
+const TICK_AT = 14;
+const TICK_LEN = 18;
 
 function insideBox(b: Box, p: Point): boolean {
   return Math.abs(p.x - b.x) < b.w / 2 && Math.abs(p.y - b.y) < b.h / 2;

@@ -192,7 +192,7 @@ test('sotto i 1024 px si guarda soltanto', async ({ page }) => {
   await expect(page.locator('[data-entity="Auto"]')).toBeVisible();
 });
 
-test("entità debole: l'identificante resta 1:N, senza errori, con chiave composta nell'SQL", async ({ page }) => {
+test("entità debole: taglietto col pallino sul ramo identificante, senza errori, chiave composta nell'SQL", async ({ page }) => {
   await page.goto('/');
   await page.locator('input[type=file]').setInputFiles(path.join(__dirname, 'fixtures', 'er-semplice.json'));
   await expect(page.getByRole('application', { name: 'Diagramma entità-relazione' })).toBeVisible();
@@ -201,6 +201,16 @@ test("entità debole: l'identificante resta 1:N, senza errori, con chiave compos
   await expect(page.getByLabel('Identificante tramite «possiede»')).toBeChecked();
   await expect(page.locator('[data-rel="possiede"] .er-kind')).toHaveText('1:N');
   await expect(page.locator('[data-rel="possiede"] .er-rel-weak')).toHaveCount(1);
+  // il taglietto parte dal ramo, fuori da «Auto», ed e' perpendicolare al ramo (orizzontale)
+  const tick = page.locator('[data-extid] line');
+  await expect(tick).toHaveCount(1);
+  await expect(page.locator('[data-extid] circle.er-dot.is-key')).toHaveCount(1);
+  await expect(page.locator('[data-attr="Targa"] circle.er-dot.is-key')).toHaveCount(1);
+  const [x1, y1, x2, y2] = await tick.evaluate((l) => ['x1', 'y1', 'x2', 'y2'].map((a) => Number(l.getAttribute(a))));
+  expect(x1).toBe(x2);
+  expect(Math.abs(y2 - y1)).toBeGreaterThan(10);
+  const autoX = Number(await page.locator('[data-entity="Auto"] rect.er-entity-shape').getAttribute('x'));
+  expect(x1).toBeLessThan(autoX);
   await expect(page.getByRole('tab', { name: /Problemi/ })).not.toContainText(/\d/);
   await page.getByRole('tab', { name: 'SQL' }).click();
   await expect(page.locator('pre code')).toContainText('PRIMARY KEY ("Targa", "CF_Proprietario")');
