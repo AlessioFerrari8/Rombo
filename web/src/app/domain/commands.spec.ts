@@ -1,6 +1,6 @@
 import {
   addAttribute, addEntity, addGeneralization, addRelationship, copyElements, createDiagram,
-  deleteElements, moveElements, pasteElements, redistributeAttributes, rename, setExternalVia, setWeak,
+  deleteElements, moveElements, pasteElements, redistributeAttributes, rename, setExternalVia, setIdentifying, setWeak,
   toggleIdentifierAttribute, uniqueName, updateParticipant,
 } from './commands';
 import { Diagram, entityById, relationshipById } from './model';
@@ -142,6 +142,29 @@ describe('redistributeAttributes', () => {
     const lines = connectedAngles(out, a.id);
     const angle = out.entities[0].attributes[0].angle;
     expect(Math.min(...lines.map((l) => angDist(l, angle)))).toBeGreaterThan(0.5);
+  });
+
+  it("setIdentifying: rende identificante l'associazione e la imposta 1:N (debole (1,1), proprietario (0,N))", () => {
+    let { d, auto, prop, rel } = base();
+    d = setIdentifying(d, auto, rel, true);
+    const e = entityById(d, auto)!;
+    expect(e.weak).toBe(true);
+    expect(e.primary!.externalVia).toEqual([rel]);
+    const r = relationshipById(d, rel)!;
+    expect(r.participants.find((p) => p.entityId === auto)).toMatchObject({ min: 1, max: 1 });
+    expect(r.participants.find((p) => p.entityId === prop)).toMatchObject({ min: 0, max: 'N' });
+    d = setIdentifying(d, auto, rel, false);
+    expect(entityById(d, auto)!.primary).toBeNull();
+  });
+
+  it('setIdentifying non tocca la cardinalità già scelta per il proprietario (1:1 resta 1:1)', () => {
+    let { d, auto, prop, rel } = base();
+    d = updateParticipant(d, rel, 0, { min: 1, max: 1 });
+    d = updateParticipant(d, rel, 1, { min: 0, max: 'N' });
+    d = setIdentifying(d, auto, rel, true);
+    const r = relationshipById(d, rel)!;
+    expect(r.participants.find((p) => p.entityId === prop)).toMatchObject({ min: 1, max: 1 });
+    expect(r.participants.find((p) => p.entityId === auto)).toMatchObject({ min: 1, max: 1 });
   });
 
   it("setWeak: dichiara l'entità debole; toglierla scollega l'associazione identificante", () => {

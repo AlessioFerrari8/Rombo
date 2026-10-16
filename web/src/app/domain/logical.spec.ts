@@ -4,6 +4,7 @@ import {
 } from './commands';
 import { AttrCard, Id } from './model';
 import { formatLogical, ident, toLogical } from './logical';
+import { toDDL } from './ddl';
 
 class B {
   d = createDiagram();
@@ -300,6 +301,34 @@ describe('toLogical — casi limite (fix round 1)', () => {
     const f = b.table('Fattura');
     expect(f.primaryKey).toEqual(['Riga', 'Num_Ordine']);
     expect(f.foreignKeys).toEqual([{ columns: ['Num_Ordine'], refTable: 'Ordine', refColumns: ['Num'] }]);
+  });
+
+  it("entità debole in un 1:N: chiave = chiave parziale + chiave del proprietario, FK verso il proprietario, anche nell'SQL", () => {
+    const b = new B();
+    const s = b.ent('Squadra', ['Nome']);
+    const g = b.ent('Giocatore', ['Numero'], [['Ruolo']]);
+    const r = b.rel('gioca', [[s, '0,N'], [g, '1,1']]);
+    b.d = setExternalVia(b.d, g, [r]);
+    const t = b.table('Giocatore');
+    expect(t.primaryKey).toEqual(['Numero', 'Nome_Squadra']);
+    expect(t.foreignKeys).toEqual([{ columns: ['Nome_Squadra'], refTable: 'Squadra', refColumns: ['Nome'] }]);
+    expect(t.uniques).toEqual([]);
+    expect(b.table('Squadra').foreignKeys).toEqual([]);
+    const sql = toDDL(toLogical(b.d), 'postgres');
+    expect(sql).toContain('CONSTRAINT "pk_Giocatore" PRIMARY KEY ("Numero", "Nome_Squadra")');
+    expect(sql).toContain('FOREIGN KEY ("Nome_Squadra") REFERENCES "Squadra" ("Nome")');
+  });
+
+  it('entità debole in un 1:1 col proprietario (0,1): la chiave del proprietario è anche UNIQUE', () => {
+    const b = new B();
+    const o = b.ent('Ordine', ['Num']);
+    const f = b.ent('Fattura', ['Riga']);
+    const r = b.rel('genera', [[o, '0,1'], [f, '1,1']]);
+    b.d = setExternalVia(b.d, f, [r]);
+    const t = b.table('Fattura');
+    expect(t.primaryKey).toEqual(['Riga', 'Num_Ordine']);
+    expect(t.foreignKeys).toHaveLength(1);
+    expect(t.uniques).toEqual([['Num_Ordine']]);
   });
 
   it("H: entità debole identificata tramite un'associazione coinvolta in un merge-down: mantiene la chiave, con nota sull'ambiguità", () => {

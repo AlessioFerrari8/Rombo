@@ -10,7 +10,7 @@
     </header>
 
     <label class="ui-choice">
-      <input type="checkbox" class="ui-checkbox" [checked]="isWeak(e)" [disabled]="ro()" (change)="toggleWeak(e)" />
+      <input type="checkbox" class="ui-checkbox" aria-label="Entità debole" [checked]="isWeak(e)" [disabled]="ro()" (change)="toggleWeak(e)" />
       <span class="min-w-0 flex-1">Entità debole</span>
     </label>
 
@@ -52,16 +52,17 @@
     @if (isWeak(e)) {
       <div class="ui-section">
         <h3 class="ui-section-title">Associazione identificante</h3>
-        <p class="ui-hint -mt-1">L'entità debole non basta a se stessa: l'identificatore comprende anche la chiave dell'entità collegata (il rombo diventa doppio).</p>
+        <p class="ui-hint -mt-1">L'entità debole non basta a se stessa: l'identificatore comprende anche la chiave dell'entità proprietaria (il rombo diventa doppio).</p>
+        <p class="ui-hint">Dal lato di {{ e.name }} la cardinalità diventa (1,1): ogni {{ e.name }} ha un solo proprietario. Il proprietario di solito ne ha molte, (0,N) o (1,N): l'associazione è 1:N. Con (0,1) o (1,1) anche dall'altra parte è 1:1.</p>
         @if (!externalCandidates(e).length) {
           <p class="ui-hint">Collega prima l'entità a un'altra con un'associazione.</p>
         }
         @for (c of externalCandidates(e); track c.rel.id) {
           <label class="ui-choice flex-wrap">
-            <input type="checkbox" class="ui-checkbox" [checked]="c.on" [disabled]="ro()" (change)="toggleExternal(e, c.rel.id)" />
+            <input type="checkbox" class="ui-checkbox" [attr.aria-label]="'Identificante tramite «' + c.rel.name + '»'" [checked]="c.on" [disabled]="ro()" (change)="toggleExternal(e, c.rel.id)" />
             <span class="min-w-0 flex-1">tramite «{{ c.rel.name }}» verso {{ c.otherName }}</span>
-            @if (!c.valid) {
-              <span class="ui-badge ui-badge-warning">serve (1,1)</span>
+            @if (!c.on && !c.ready) {
+              <span class="ui-badge" title="Scegliendola, {{ e.name }} partecipa con (1,1)">diventa (1,1)</span>
             }
           </label>
         }
@@ -137,7 +138,11 @@
       </ul>
     </div>
 
-    @if (ambiguousOneToOne(r)) {
+    @if (identifyingInfo(r); as info) {
+      <p class="ui-hint -mt-2">Associazione identificante: ogni {{ info.weak }} dipende da un solo {{ info.owner }}, quindi {{ info.weak }} partecipa con (1,1). {{ info.owner }} con (0,N) o (1,N) dà un 1:N, il caso tipico; con (0,1) o (1,1) un 1:1.</p>
+    }
+
+    @if (ambiguousOneToOne(r) && !identifyingInfo(r)) {
       <div class="ui-section">
         <h3 class="ui-section-title">Chiave esterna</h3>
         <p class="ui-hint -mt-1">È un uno-a-uno simmetrico: scegli in quale tabella va la chiave esterna.</p>

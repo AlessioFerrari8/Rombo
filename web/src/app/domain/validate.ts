@@ -4,7 +4,8 @@ export type Severity = 'error' | 'warning';
 
 export type IssueCode =
   | 'empty-name' | 'duplicate-name' | 'duplicate-attribute' | 'no-primary' | 'identifier-not-single'
-  | 'too-few-participants' | 'missing-cardinality' | 'recursive-needs-roles' | 'external-id-not-11'
+  | 'too-few-participants' | 'missing-cardinality' | 'recursive-needs-roles'
+  | 'identifying-not-binary' | 'identifying-many-owners' | 'identifying-partial' | 'weak-no-partial-key'
   | 'identifier-cycle' | 'isa-cycle' | 'isa-child-has-identifier' | 'invalid-sql-type' | 'merge-down-partial'
   | 'isolated-entity' | 'generic-relationship-name' | 'multivalued-attribute' | 'isa-default-strategy'
   | 'isa-mixed-strategies' | 'text-in-key' | 'name-too-long' | 'composite-one-part' | 'multivalued-composite'
@@ -143,11 +144,32 @@ export function validate(d: Diagram): Issue[] {
     for (const rid of e.primary.externalVia) {
       const r = relationshipById(d, rid);
       const mine = r?.participants.find((p) => p.entityId === e.id);
-      if (!r || !mine || mine.min !== 1 || mine.max !== 1 || r.participants.length !== 2) {
-        err('external-id-not-11', `${q(e.name)} è identificata tramite ${q(r?.name)}, quindi deve partecipare con (1,1) a un'associazione binaria.`, e.id, rid);
-      }
       const other = r?.participants.find((p) => p !== mine);
       if (other) targets.push(other.entityId);
+      if (!r || !mine) continue;
+      // Associazione identificante: binaria; la debole partecipa con (1,1), il proprietario con
+      // qualunque cardinalita' — (0,N)/(1,N) e' il caso tipico 1:N, (0,1)/(1,1) un 1:1.
+      if (r.participants.length !== 2) {
+        err('identifying-not-binary', `${q(r.name)} identifica ${q(e.name)}: deve collegare solo due entità, ${q(e.name)} e il suo proprietario.`, e.id, rid);
+        continue;
+      }
+      const owner = q(nameOf(other!.entityId));
+      if (mine.max !== null && mine.max !== 1) {
+        err(
+          'identifying-many-owners',
+          `${q(e.name)} si identifica tramite ${q(r.name)}, quindi ogni ${q(e.name)} dipende da un solo ${owner}: dal suo lato il massimo è 1, cioè (1,1). Il proprietario può averne molte, quindi l'associazione resta 1:N (con N anche dal lato di ${q(e.name)} sarebbe N:N, che non identifica).`,
+          e.id, rid,
+        );
+      } else if (mine.min === 0) {
+        err('identifying-partial', `${q(e.name)} non esiste senza ${owner}: in ${q(r.name)} la sua partecipazione è totale, cioè (1,1) e non (0,1).`, e.id, rid);
+      }
+      if (!e.primary.attributeIds.length && other!.max !== null && other!.max !== 1) {
+        err(
+          'weak-no-partial-key',
+          `Lo stesso ${owner} può avere più ${q(e.name)}: aggiungi all'identificatore di ${q(e.name)} una chiave parziale (es. un numero progressivo) che le distingua.`,
+          e.id,
+        );
+      }
     }
     extGraph.set(e.id, targets);
   }

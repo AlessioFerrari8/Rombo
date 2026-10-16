@@ -1,6 +1,6 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import {
-  addAttribute, addAttributePart, addRelationship, deleteElements, rename, setAlternates, setExternalVia, setFkOn, setWeak,
+  addAttribute, addAttributePart, addRelationship, deleteElements, rename, setAlternates, setFkOn, setIdentifying, setWeak,
   toggleIdentifierAttribute, updateAttribute, updateGeneralization, updateParticipant, updatePart,
 } from '../../domain/commands';
 import {
@@ -96,7 +96,8 @@ export class Properties {
   toggleKey(entityId: Id, attrId: Id): void {
     this.store.apply((d) => toggleIdentifierAttribute(d, entityId, attrId));
   }
-  externalCandidates(e: Entity): Array<{ rel: Relationship; otherName: string; on: boolean; valid: boolean }> {
+  /** Associazioni binarie dell'entita' che possono identificarla; `ready` se vi partecipa gia' con (1,1). */
+  externalCandidates(e: Entity): Array<{ rel: Relationship; otherName: string; on: boolean; ready: boolean }> {
     return this.store.diagram().relationships
       .filter((r) => r.participants.length === 2 && r.participants.some((p) => p.entityId === e.id))
       .map((r) => {
@@ -106,27 +107,28 @@ export class Properties {
           rel: r,
           otherName: this.entityName(other.entityId),
           on: e.primary?.externalVia.includes(r.id) ?? false,
-          valid: mine.min === 1 && mine.max === 1,
+          ready: mine.min === 1 && mine.max === 1,
         };
       });
   }
   isWeak = isWeak;
   toggleWeak(e: Entity): void {
     const on = !isWeak(e);
-    this.store.apply((d) => {
-      let next = setWeak(d, e.id, on);
-      if (on) {
-        // un solo candidato valido: lo scelgo io
-        const valid = this.externalCandidates(e).filter((c) => c.valid);
-        if (valid.length === 1) next = setExternalVia(next, e.id, [valid[0].rel.id]);
-      }
-      return next;
-    });
+    // un'identificante sola possibile (o una sola gia' con (1,1)): la scelgo io
+    const all = on ? this.externalCandidates(e) : [];
+    const ready = all.filter((c) => c.ready);
+    const pick = ready.length === 1 ? ready[0] : all.length === 1 ? all[0] : null;
+    this.store.apply((d) => (pick ? setIdentifying(setWeak(d, e.id, true), e.id, pick.rel.id, true) : setWeak(d, e.id, on)));
   }
   toggleExternal(e: Entity, relId: Id): void {
-    const cur = e.primary?.externalVia ?? [];
-    const next = cur.includes(relId) ? cur.filter((r) => r !== relId) : [...cur, relId];
-    this.store.apply((d) => setExternalVia(d, e.id, next));
+    const on = !(e.primary?.externalVia.includes(relId) ?? false);
+    this.store.apply((d) => setIdentifying(d, e.id, relId, on));
+  }
+  /** Se `r` identifica un'entita' debole: il suo nome e quello del proprietario, per il suggerimento. */
+  identifyingInfo(r: Relationship): { weak: string; owner: string } | null {
+    const weak = this.store.diagram().entities.find((e) => e.primary?.externalVia.includes(r.id));
+    const owner = weak && r.participants.find((p) => p.entityId !== weak.id);
+    return weak && owner ? { weak: weak.name, owner: this.entityName(owner.entityId) } : null;
   }
   addAlternate(e: Entity): void {
     const first = e.attributes.find((a) => !this.isKey(e, a.id)) ?? e.attributes[0];

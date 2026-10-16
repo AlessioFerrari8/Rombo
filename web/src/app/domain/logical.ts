@@ -401,6 +401,12 @@ export function toLogical(d: Diagram): LogicalSchema {
         const cols = tk.cols.map((c) => addCol(ht, { ...c, name: `${c.name}_${suffix}`, nullable: optional }));
         ht.foreignKeys.push({ columns: cols, refTable: tableName(te.id), refColumns: tk.cols.map((c) => c.name) });
         if (ones.length === 2) ht.uniques.push(cols);
+      } else if (ones.length === 2) {
+        // debole in un 1:1: la chiave del proprietario e' gia' nella chiave primaria (insieme alla
+        // chiave parziale), ma un proprietario ne ha al massimo una, quindi e' anche UNIQUE.
+        const fk = ht.foreignKeys.find((f) => f.refTable === tableName(te.id));
+        const samePk = fk && fk.columns.length === ht.primaryKey.length && fk.columns.every((c) => ht.primaryKey.includes(c));
+        if (fk && !samePk) ht.uniques.push([...fk.columns]);
       }
       for (const a of singleAttrs) addCol(ht, { ...column(a), nullable: optional || a.card === '0,1' });
       continue;

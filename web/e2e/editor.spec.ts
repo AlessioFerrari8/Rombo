@@ -192,6 +192,20 @@ test('sotto i 1024 px si guarda soltanto', async ({ page }) => {
   await expect(page.locator('[data-entity="Auto"]')).toBeVisible();
 });
 
+test("entità debole: l'identificante resta 1:N, senza errori, con chiave composta nell'SQL", async ({ page }) => {
+  await page.goto('/');
+  await page.locator('input[type=file]').setInputFiles(path.join(__dirname, 'fixtures', 'er-semplice.json'));
+  await expect(page.getByRole('application', { name: 'Diagramma entità-relazione' })).toBeVisible();
+  await page.locator('[data-entity="Auto"]').click();
+  await page.getByLabel('Entità debole').check();
+  await expect(page.getByLabel('Identificante tramite «possiede»')).toBeChecked();
+  await expect(page.locator('[data-rel="possiede"] .er-kind')).toHaveText('1:N');
+  await expect(page.locator('[data-rel="possiede"] .er-rel-weak')).toHaveCount(1);
+  await expect(page.getByRole('tab', { name: /Problemi/ })).not.toContainText(/\d/);
+  await page.getByRole('tab', { name: 'SQL' }).click();
+  await expect(page.locator('pre code')).toContainText('PRIMARY KEY ("Targa", "CF_Proprietario")');
+});
+
 test('le linee rombo-entità sono segmenti dritti, anche dopo il layout automatico', async ({ page }) => {
   await page.goto('/');
   await page.locator('input[type=file]').setInputFiles(fixture);

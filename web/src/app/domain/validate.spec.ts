@@ -50,16 +50,61 @@ describe('validate', () => {
     expect(codes(d)).not.toContain('recursive-needs-roles');
   });
 
-  it("l'identificatore esterno richiede (1,1) in un'associazione binaria", () => {
-    const a = entity(createDiagram(), 'Squadra');
-    const b = entity(a.d, 'Giocatore', false);
-    const r = addRelationship(b.d, [b.id, a.id], undefined, 'gioca');
-    let d = updateParticipant(r.diagram, r.id, 0, { min: 0, max: 'N' });
-    d = updateParticipant(d, r.id, 1, { min: 1, max: 'N' });
-    d = setExternalVia(d, b.id, [r.id]);
-    expect(codes(d)).toContain('external-id-not-11');
-    d = updateParticipant(d, r.id, 0, { min: 1, max: 1 });
-    expect(codes(d)).not.toContain('external-id-not-11');
+  describe('associazione identificante', () => {
+    // Giocatore (debole, chiave parziale Codice) dipende da Squadra tramite «gioca»
+    const weakSetup = (weakCard: [0 | 1, 1 | 'N'], ownerCard: [0 | 1, 1 | 'N'], partialKey = true) => {
+      const a = entity(createDiagram(), 'Squadra');
+      const b = entity(a.d, 'Giocatore', partialKey);
+      const r = addRelationship(b.d, [b.id, a.id], undefined, 'gioca');
+      let d = updateParticipant(r.diagram, r.id, 0, { min: weakCard[0], max: weakCard[1] });
+      d = updateParticipant(d, r.id, 1, { min: ownerCard[0], max: ownerCard[1] });
+      d = setExternalVia(setWeak(d, b.id, true), b.id, [r.id]);
+      return { d, weak: b.id, owner: a.id, rel: r.id };
+    };
+    const identifyingCodes = (d: Diagram) =>
+      codes(d).filter((c) => c.startsWith('identifying-') || c === 'weak-no-partial-key');
+
+    it('1:N (debole (1,1), proprietario (0,N)) è il caso tipico: nessun errore', () => {
+      const { d } = weakSetup([1, 1], [0, 'N']);
+      expect(validate(d).filter((i) => i.severity === 'error')).toEqual([]);
+    });
+
+    it('anche 1:1 è ammessa', () => {
+      expect(identifyingCodes(weakSetup([1, 1], [1, 1]).d)).toEqual([]);
+      expect(identifyingCodes(weakSetup([1, 1], [0, 1]).d)).toEqual([]);
+    });
+
+    it('N:N non identifica: la debole avrebbe più proprietari', () => {
+      const { d, weak, rel } = weakSetup([1, 'N'], [0, 'N']);
+      const issue = validate(d).find((i) => i.code === 'identifying-many-owners')!;
+      expect(issue.severity).toBe('error');
+      expect(issue.targetIds).toEqual([weak, rel]);
+      expect(issue.message).toContain('un solo «Squadra»');
+      expect(issue.message).toContain('1:N');
+    });
+
+    it('la partecipazione della debole deve essere totale', () => {
+      const issue = validate(weakSetup([0, 1], [0, 'N']).d).find((i) => i.code === 'identifying-partial')!;
+      expect(issue.severity).toBe('error');
+      expect(issue.message).toContain('(1,1)');
+    });
+
+    it('deve essere binaria', () => {
+      const s = weakSetup([1, 1], [0, 'N']);
+      const c = entity(s.d, 'Campionato');
+      const d = {
+        ...c.d,
+        relationships: c.d.relationships.map((r) =>
+          r.id === s.rel ? { ...r, participants: [...r.participants, { entityId: c.id, min: 0 as const, max: 'N' as const }] } : r),
+      };
+      expect(codes(d)).toContain('identifying-not-binary');
+    });
+
+    it('in un 1:N la debole ha bisogno di una chiave parziale', () => {
+      expect(codes(weakSetup([1, 1], [0, 'N'], false).d)).toContain('weak-no-partial-key');
+      // in un 1:1 la chiave del proprietario basta da sola
+      expect(codes(weakSetup([1, 1], [0, 1], false).d)).not.toContain('weak-no-partial-key');
+    });
   });
 
   it("un'entità debole senza associazione identificante è un errore", () => {
