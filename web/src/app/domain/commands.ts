@@ -247,27 +247,13 @@ export function setExternalVia(d: Diagram, entityId: Id, relIds: Id[]): Diagram 
 }
 
 /**
- * Rende (o non piu') `relId` associazione identificante di `entityId`. Accendendola l'entita' diventa
- * debole e partecipa con (1,1): un solo proprietario, partecipazione totale. Il proprietario, se non
- * ha ancora una cardinalita', parte da (0,N): il caso tipico e' 1:N; se l'utente l'ha gia' scelta
- * (anche (x,1), cioe' 1:1) resta com'e'.
+ * Rende (o non piu') `relId` associazione identificante di `entityId`, che diventa debole.
+ * Le cardinalita' restano quelle scelte: l'identificante e' un'associazione come le altre.
  */
 export function setIdentifying(d: Diagram, entityId: Id, relId: Id, on: boolean): Diagram {
   const cur = entityById(d, entityId)?.primary?.externalVia ?? [];
   const out = setExternalVia(d, entityId, on ? [...cur, relId] : cur.filter((r) => r !== relId));
-  if (!on) return out;
-  return edit(out, (x) => {
-    mutableEntity(x, entityId).weak = true;
-    for (const p of relationshipById(x, relId)?.participants ?? []) {
-      if (p.entityId === entityId) {
-        p.min = 1;
-        p.max = 1;
-      } else if (p.min === null && p.max === null) {
-        p.min = 0;
-        p.max = 'N';
-      }
-    }
-  });
+  return on ? edit(out, (x) => { mutableEntity(x, entityId).weak = true; }) : out;
 }
 
 /** Dichiara (o toglie) l'entità debole; togliendola si scollegano anche le associazioni identificanti. */

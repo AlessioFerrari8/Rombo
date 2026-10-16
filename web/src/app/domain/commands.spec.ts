@@ -144,27 +144,20 @@ describe('redistributeAttributes', () => {
     expect(Math.min(...lines.map((l) => angDist(l, angle)))).toBeGreaterThan(0.5);
   });
 
-  it("setIdentifying: rende identificante l'associazione e la imposta 1:N (debole (1,1), proprietario (0,N))", () => {
+  it("setIdentifying: rende identificante l'associazione senza toccare le cardinalità scelte", () => {
     let { d, auto, prop, rel } = base();
+    d = updateParticipant(d, rel, 0, { min: 0, max: 'N' });
+    d = updateParticipant(d, rel, 1, { min: 0, max: 'N' });
+    const before = relationshipById(d, rel)!.participants;
     d = setIdentifying(d, auto, rel, true);
     const e = entityById(d, auto)!;
     expect(e.weak).toBe(true);
     expect(e.primary!.externalVia).toEqual([rel]);
-    const r = relationshipById(d, rel)!;
-    expect(r.participants.find((p) => p.entityId === auto)).toMatchObject({ min: 1, max: 1 });
-    expect(r.participants.find((p) => p.entityId === prop)).toMatchObject({ min: 0, max: 'N' });
+    expect(relationshipById(d, rel)!.participants).toEqual(before);
     d = setIdentifying(d, auto, rel, false);
     expect(entityById(d, auto)!.primary).toBeNull();
-  });
-
-  it('setIdentifying non tocca la cardinalità già scelta per il proprietario (1:1 resta 1:1)', () => {
-    let { d, auto, prop, rel } = base();
-    d = updateParticipant(d, rel, 0, { min: 1, max: 1 });
-    d = updateParticipant(d, rel, 1, { min: 0, max: 'N' });
-    d = setIdentifying(d, auto, rel, true);
-    const r = relationshipById(d, rel)!;
-    expect(r.participants.find((p) => p.entityId === prop)).toMatchObject({ min: 1, max: 1 });
-    expect(r.participants.find((p) => p.entityId === auto)).toMatchObject({ min: 1, max: 1 });
+    expect(entityById(d, auto)!.weak).toBe(true);
+    expect(prop).toBeTruthy();
   });
 
   it("setWeak: dichiara l'entità debole; toglierla scollega l'associazione identificante", () => {

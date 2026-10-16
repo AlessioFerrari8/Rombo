@@ -64,29 +64,15 @@ describe('validate', () => {
     const identifyingCodes = (d: Diagram) =>
       codes(d).filter((c) => c.startsWith('identifying-') || c === 'weak-no-partial-key');
 
-    it('1:N (debole (1,1), proprietario (0,N)) è il caso tipico: nessun errore', () => {
-      const { d } = weakSetup([1, 1], [0, 'N']);
-      expect(validate(d).filter((i) => i.severity === 'error')).toEqual([]);
-    });
-
-    it('anche 1:1 è ammessa', () => {
-      expect(identifyingCodes(weakSetup([1, 1], [1, 1]).d)).toEqual([]);
-      expect(identifyingCodes(weakSetup([1, 1], [0, 1]).d)).toEqual([]);
-    });
-
-    it('N:N non identifica: la debole avrebbe più proprietari', () => {
-      const { d, weak, rel } = weakSetup([1, 'N'], [0, 'N']);
-      const issue = validate(d).find((i) => i.code === 'identifying-many-owners')!;
-      expect(issue.severity).toBe('error');
-      expect(issue.targetIds).toEqual([weak, rel]);
-      expect(issue.message).toContain('un solo «Squadra»');
-      expect(issue.message).toContain('1:N');
-    });
-
-    it('la partecipazione della debole deve essere totale', () => {
-      const issue = validate(weakSetup([0, 1], [0, 'N']).d).find((i) => i.code === 'identifying-partial')!;
-      expect(issue.severity).toBe('error');
-      expect(issue.message).toContain('(1,1)');
+    it('qualunque cardinalità è ammessa: 1:1, 1:N, N:1, N:N, anche con partecipazione parziale', () => {
+      const cards: Array<[[0 | 1, 1 | 'N'], [0 | 1, 1 | 'N']]> = [
+        [[1, 1], [0, 'N']], [[1, 1], [1, 1]], [[0, 1], [0, 1]], [[1, 'N'], [0, 1]], [[1, 'N'], [0, 'N']], [[0, 'N'], [1, 'N']],
+      ];
+      for (const [w, o] of cards) {
+        const { d } = weakSetup(w, o);
+        expect(validate(d).filter((i) => i.severity === 'error')).toEqual([]);
+        expect(identifyingCodes(d)).toEqual([]);
+      }
     });
 
     it('deve essere binaria', () => {
@@ -100,10 +86,11 @@ describe('validate', () => {
       expect(codes(d)).toContain('identifying-not-binary');
     });
 
-    it('in un 1:N la debole ha bisogno di una chiave parziale', () => {
-      expect(codes(weakSetup([1, 1], [0, 'N'], false).d)).toContain('weak-no-partial-key');
-      // in un 1:1 la chiave del proprietario basta da sola
-      expect(codes(weakSetup([1, 1], [0, 1], false).d)).not.toContain('weak-no-partial-key');
+    it('senza chiave parziale, se lo stesso proprietario può tornare più volte: solo un avviso', () => {
+      const issue = validate(weakSetup([1, 1], [0, 'N'], false).d).find((i) => i.code === 'weak-no-partial-key')!;
+      expect(issue.severity).toBe('warning');
+      // proprietario con massimo 1: la sua chiave basta da sola
+      expect(codes(weakSetup([1, 'N'], [0, 1], false).d)).not.toContain('weak-no-partial-key');
     });
   });
 

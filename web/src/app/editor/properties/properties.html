@@ -53,7 +53,7 @@
       <div class="ui-section">
         <h3 class="ui-section-title">Associazione identificante</h3>
         <p class="ui-hint -mt-1">L'entità debole non basta a se stessa: l'identificatore comprende anche la chiave dell'entità proprietaria (il rombo diventa doppio).</p>
-        <p class="ui-hint">Dal lato di {{ e.name }} la cardinalità diventa (1,1): ogni {{ e.name }} ha un solo proprietario. Il proprietario di solito ne ha molte, (0,N) o (1,N): l'associazione è 1:N. Con (0,1) o (1,1) anche dall'altra parte è 1:1.</p>
+        <p class="ui-hint">L'associazione resta normale: le cardinalità le scegli tu, come per le altre.</p>
         @if (!externalCandidates(e).length) {
           <p class="ui-hint">Collega prima l'entità a un'altra con un'associazione.</p>
         }
@@ -61,9 +61,6 @@
           <label class="ui-choice flex-wrap">
             <input type="checkbox" class="ui-checkbox" [attr.aria-label]="'Identificante tramite «' + c.rel.name + '»'" [checked]="c.on" [disabled]="ro()" (change)="toggleExternal(e, c.rel.id)" />
             <span class="min-w-0 flex-1">tramite «{{ c.rel.name }}» verso {{ c.otherName }}</span>
-            @if (!c.on && !c.ready) {
-              <span class="ui-badge" title="Scegliendola, {{ e.name }} partecipa con (1,1)">diventa (1,1)</span>
-            }
           </label>
         }
       </div>
@@ -139,7 +136,7 @@
     </div>
 
     @if (identifyingInfo(r); as info) {
-      <p class="ui-hint -mt-2">Associazione identificante: ogni {{ info.weak }} dipende da un solo {{ info.owner }}, quindi {{ info.weak }} partecipa con (1,1). {{ info.owner }} con (0,N) o (1,N) dà un 1:N, il caso tipico; con (0,1) o (1,1) un 1:1.</p>
+      <p class="ui-hint -mt-2">Associazione identificante: la chiave di {{ info.weak }} comprende quella di {{ info.owner }}. Le cardinalità sono libere.</p>
     }
 
     @if (ambiguousOneToOne(r) && !identifyingInfo(r)) {

@@ -96,29 +96,22 @@ export class Properties {
   toggleKey(entityId: Id, attrId: Id): void {
     this.store.apply((d) => toggleIdentifierAttribute(d, entityId, attrId));
   }
-  /** Associazioni binarie dell'entita' che possono identificarla; `ready` se vi partecipa gia' con (1,1). */
-  externalCandidates(e: Entity): Array<{ rel: Relationship; otherName: string; on: boolean; ready: boolean }> {
+  /** Associazioni binarie dell'entita' che possono identificarla, con qualunque cardinalita'. */
+  externalCandidates(e: Entity): Array<{ rel: Relationship; otherName: string; on: boolean }> {
     return this.store.diagram().relationships
       .filter((r) => r.participants.length === 2 && r.participants.some((p) => p.entityId === e.id))
       .map((r) => {
         const mine = r.participants.find((p) => p.entityId === e.id)!;
         const other = r.participants.find((p) => p !== mine)!;
-        return {
-          rel: r,
-          otherName: this.entityName(other.entityId),
-          on: e.primary?.externalVia.includes(r.id) ?? false,
-          ready: mine.min === 1 && mine.max === 1,
-        };
+        return { rel: r, otherName: this.entityName(other.entityId), on: e.primary?.externalVia.includes(r.id) ?? false };
       });
   }
   isWeak = isWeak;
   toggleWeak(e: Entity): void {
     const on = !isWeak(e);
-    // un'identificante sola possibile (o una sola gia' con (1,1)): la scelgo io
+    // una sola associazione possibile: la scelgo io come identificante
     const all = on ? this.externalCandidates(e) : [];
-    const ready = all.filter((c) => c.ready);
-    const pick = ready.length === 1 ? ready[0] : all.length === 1 ? all[0] : null;
-    this.store.apply((d) => (pick ? setIdentifying(setWeak(d, e.id, true), e.id, pick.rel.id, true) : setWeak(d, e.id, on)));
+    this.store.apply((d) => (all.length === 1 ? setIdentifying(d, e.id, all[0].rel.id, true) : setWeak(d, e.id, on)));
   }
   toggleExternal(e: Entity, relId: Id): void {
     const on = !(e.primary?.externalVia.includes(relId) ?? false);

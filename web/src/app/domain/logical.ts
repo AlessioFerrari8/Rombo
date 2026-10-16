@@ -375,6 +375,25 @@ export function toLogical(d: Diagram): LogicalSchema {
       return false;
     });
 
+    // associazione identificante: qualunque cardinalita' abbia, la chiave del proprietario e' gia'
+    // nella chiave primaria della debole (con la FK). La tabella della debole fa anche da tabella
+    // dell'associazione: niente ponte nemmeno per un N:N, una riga per ogni coppia (debole, proprietario).
+    const identified = r.participants.length === 2
+      ? r.participants.find((p) => byId.get(p.entityId)?.primary?.externalVia.includes(r.id))
+      : undefined;
+    if (identified) {
+      const owner = r.participants[r.participants.indexOf(identified) === 0 ? 1 : 0];
+      const wt = tableOf.get(identified.entityId)!;
+      // un proprietario con massimo 1 compare al piu' in una riga: la sua chiave e' anche UNIQUE
+      if (owner.max === 1) {
+        const fk = wt.foreignKeys.find((f) => f.refTable === tableName(owner.entityId));
+        const samePk = fk && fk.columns.length === wt.primaryKey.length && fk.columns.every((c) => wt.primaryKey.includes(c));
+        if (fk && !samePk) wt.uniques.push([...fk.columns]);
+      }
+      for (const a of singleAttrs) addCol(wt, { ...column(a), nullable: a.card === '0,1' });
+      continue;
+    }
+
     if (r.participants.length === 2 && ones.length > 0) {
       let holder: Participant;
       if (ones.length === 1) holder = ones[0];
@@ -383,31 +402,19 @@ export function toLogical(d: Diagram): LogicalSchema {
         // ambigua solo se i due lati hanno lo stesso minimo: altrimenti la regola del lato (1,1)
         // basta da sola e fkOn (se impostato per un caso non ambiguo) va ignorato.
         const ambiguous = r.participants[0].min === r.participants[1].min;
-        // se uno dei due lati si identifica esternamente proprio tramite questa associazione, la
-        // chiave esterna che lo riguarda e' gia' nella sua chiave primaria: non se ne aggiunge un'altra.
-        const viaExternal = r.participants.find((p) => byId.get(p.entityId)?.primary?.externalVia.includes(r.id));
-        const chosen = !viaExternal && ambiguous && r.fkOn ? r.participants.find((p) => p.entityId === r.fkOn) : undefined;
-        holder = viaExternal ?? chosen ?? (mandatory.length === 1 ? mandatory[0] : r.participants[0]);
+        const chosen = ambiguous && r.fkOn ? r.participants.find((p) => p.entityId === r.fkOn) : undefined;
+        holder = chosen ?? (mandatory.length === 1 ? mandatory[0] : r.participants[0]);
       }
       const target = r.participants[r.participants.indexOf(holder) === 0 ? 1 : 0];
       const he = byId.get(holder.entityId)!;
       const te = byId.get(target.entityId)!;
       const ht = tableOf.get(he.id)!;
       const optional = holder.min === 0;
-      const already = he.primary?.externalVia.includes(r.id) ?? false;
-      if (!already) {
-        const tk = key(te);
-        const suffix = ident(target.role ?? te.name);
-        const cols = tk.cols.map((c) => addCol(ht, { ...c, name: `${c.name}_${suffix}`, nullable: optional }));
-        ht.foreignKeys.push({ columns: cols, refTable: tableName(te.id), refColumns: tk.cols.map((c) => c.name) });
-        if (ones.length === 2) ht.uniques.push(cols);
-      } else if (ones.length === 2) {
-        // debole in un 1:1: la chiave del proprietario e' gia' nella chiave primaria (insieme alla
-        // chiave parziale), ma un proprietario ne ha al massimo una, quindi e' anche UNIQUE.
-        const fk = ht.foreignKeys.find((f) => f.refTable === tableName(te.id));
-        const samePk = fk && fk.columns.length === ht.primaryKey.length && fk.columns.every((c) => ht.primaryKey.includes(c));
-        if (fk && !samePk) ht.uniques.push([...fk.columns]);
-      }
+      const tk = key(te);
+      const suffix = ident(target.role ?? te.name);
+      const cols = tk.cols.map((c) => addCol(ht, { ...c, name: `${c.name}_${suffix}`, nullable: optional }));
+      ht.foreignKeys.push({ columns: cols, refTable: tableName(te.id), refColumns: tk.cols.map((c) => c.name) });
+      if (ones.length === 2) ht.uniques.push(cols);
       for (const a of singleAttrs) addCol(ht, { ...column(a), nullable: optional || a.card === '0,1' });
       continue;
     }

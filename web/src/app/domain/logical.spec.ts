@@ -331,6 +331,34 @@ describe('toLogical — casi limite (fix round 1)', () => {
     expect(t.uniques).toEqual([['Num_Ordine']]);
   });
 
+  it("entità debole in un N:N col proprietario: niente tabella ponte, la tabella della debole fa da ponte (PK composta)", () => {
+    const b = new B();
+    const s = b.ent('Corso', ['Codice']);
+    const e = b.ent('Esame', ['Data']);
+    const r = b.rel('riguarda', [[e, '1,N'], [s, '0,N']]);
+    b.d = addAttribute(b.d, r, 'Voto', '1,1').diagram;
+    b.d = setExternalVia(b.d, e, [r]);
+    expect(b.tableNames()).toEqual(['Corso', 'Esame']);
+    const t = b.table('Esame');
+    expect(t.primaryKey).toEqual(['Data', 'Codice_Corso']);
+    expect(t.foreignKeys).toEqual([{ columns: ['Codice_Corso'], refTable: 'Corso', refColumns: ['Codice'] }]);
+    expect(t.columns.map((c) => c.name)).toEqual(['Data', 'Codice_Corso', 'Voto']);
+    expect(t.uniques).toEqual([]);
+  });
+
+  it('entità debole con proprietario (x,1) e debole (x,N): la chiave del proprietario è UNIQUE', () => {
+    const b = new B();
+    const o = b.ent('Ordine', ['Num']);
+    const f = b.ent('Fattura', ['Riga']);
+    const r = b.rel('genera', [[o, '0,1'], [f, '0,N']]);
+    b.d = setExternalVia(b.d, f, [r]);
+    expect(b.tableNames()).toEqual(['Ordine', 'Fattura']);
+    const t = b.table('Fattura');
+    expect(t.primaryKey).toEqual(['Riga', 'Num_Ordine']);
+    expect(t.columns.find((c) => c.name === 'Num_Ordine')!.nullable).toBe(false);
+    expect(t.uniques).toEqual([['Num_Ordine']]);
+  });
+
   it("H: entità debole identificata tramite un'associazione coinvolta in un merge-down: mantiene la chiave, con nota sull'ambiguità", () => {
     const b = new B();
     const dip = b.ent('Dipendente', ['Matricola']);
