@@ -1,0 +1,74 @@
+name: Release Light
+
+# Rombo Light (maturita'): stesso codice, build con l'edizione light. Solo i tag light-v* (es. light-v1.4.4,
+# con la versione di package.json): il workflow «Release» risponde ai tag v*, quindi i due non si incrociano.
+on:
+  push:
+    tags: ['light-v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            script: dist:linux:light
+          - os: windows-2022
+            script: dist:win:light
+          - os: macos-14
+            script: dist:mac:light
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            web/package-lock.json
+      - run: npm ci
+      - run: npm run web:install
+      - run: npm test
+        if: matrix.os == 'ubuntu-22.04'
+      - run: npm --prefix web test -- --watch=false
+        if: matrix.os == 'ubuntu-22.04'
+      # dist:*:light compila la web in edizione light e la controlla (verify:light) prima di impacchettare
+      - run: npm run ${{ matrix.script }} -- --publish never
+        env:
+          # nessun certificato: installer non firmati
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rombo-light-${{ matrix.os }}
+          if-no-files-found: error
+          path: |
+            release-light/*.exe
+            release-light/*.msi
+            release-light/*.AppImage
+            release-light/*.deb
+            release-light/*.dmg
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/light-v')
+    needs: build
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Rombo Light ${{ github.ref_name }}
+          files: dist/*
+          generate_release_notes: true
+          # «Latest» resta la release della versione completa
+          make_latest: 'false'
