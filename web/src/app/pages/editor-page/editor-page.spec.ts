@@ -42,4 +42,20 @@ describe('EditorPage', () => {
     expect(el.querySelectorAll('app-canvas')).toHaveLength(1);
     expect(el.querySelector('app-logical-canvas')).toBeNull();
   });
+
+  it('il pannello laterale si chiude e si riapre, e la scelta resta', async () => {
+    localStorage.removeItem('rombo.panel-open');
+    const { f, el } = await render();
+    const toggle = () => el.querySelector<HTMLButtonElement>('button[aria-label$="il pannello laterale"]')!;
+    expect(el.querySelector('app-side-panel')).not.toBeNull();
+    toggle().click();
+    f.detectChanges();
+    expect(el.querySelector('app-side-panel')).toBeNull();
+    expect(toggle().getAttribute('aria-pressed')).toBe('false');
+    expect(localStorage.getItem('rombo.panel-open')).toBe('0');
+    toggle().click();
+    f.detectChanges();
+    expect(el.querySelector('app-side-panel')).not.toBeNull();
+    localStorage.removeItem('rombo.panel-open');
+  });
 });

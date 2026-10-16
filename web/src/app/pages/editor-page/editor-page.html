@@ -1,6 +1,6 @@
 <div class="grid h-dvh grid-rows-[auto_1fr] bg-paper">
   <app-top-bar />
-  <div class="flex min-h-0 flex-col lg:grid lg:grid-cols-[auto_1fr_24rem]">
+  <div class="flex min-h-0 flex-col lg:grid " [class.lg:grid-cols-[auto_1fr_24rem]]="panelOpen()" [class.lg:grid-cols-[auto_1fr]]="!panelOpen()">
     @if (!store.readonly()) {
       <app-palette class="hidden lg:block" />
     }
@@ -29,8 +29,13 @@
           <button type="button" class="ui-btn ui-btn-sm ui-btn-primary" [disabled]="!store.isaDraft()?.childIds?.length" (click)="store.finishIsa()">Crea gerarchia</button>
         </div>
       }
+      <button type="button" class="ui-btn ui-btn-sm ui-btn-icon absolute top-3 right-3 z-(--z-overlay) shadow-float" [attr.aria-pressed]="panelOpen()" [attr.aria-label]="panelOpen() ? 'Chiudi il pannello laterale' : 'Apri il pannello laterale'" [title]="panelOpen() ? 'Chiudi il pannello laterale' : 'Apri il pannello laterale'" (click)="togglePanel()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M15 4v16" />@if (panelOpen()) { <path d="M9 10l2 2-2 2" /> } @else { <path d="M11 10l-2 2 2 2" /> }</svg>
+      </button>
     </main>
-    <app-side-panel class="max-h-[45vh] min-h-0 border-t border-line lg:max-h-none lg:border-t-0" />
+    @if (panelOpen()) {
+      <app-side-panel class="max-h-[45vh] min-h-0 border-t border-line lg:max-h-none lg:border-t-0" />
+    }
   </div>
 </div>
 <app-conflict-dialog />

@@ -12,6 +12,16 @@ import { SidePanel } from '../../editor/side-panel/side-panel';
 import { TopBar } from '../../editor/top-bar/top-bar';
 import { LogicalCanvas, RegenerateDialog } from '../../edition/logical-ui';
 
+const PANEL_KEY = 'rombo.panel-open';
+
+function loadPanelOpen(): boolean {
+  try {
+    return localStorage.getItem(PANEL_KEY) !== '0';
+  } catch {
+    return true;
+  }
+}
+
 @Component({
   selector: 'app-editor-page',
   templateUrl: './editor-page.html',
@@ -27,6 +37,7 @@ export class EditorPage {
   private readonly toasts = inject(Toasts);
   private readonly size = inject(ViewportSize);
   protected readonly ready = signal(false);
+  protected readonly panelOpen = signal(loadPanelOpen());
 
   constructor() {
     effect(() => {
@@ -43,6 +54,16 @@ export class EditorPage {
       desktop.setCurrent(null);
       void this.store.flush();
     });
+  }
+
+  protected togglePanel(): void {
+    const open = !this.panelOpen();
+    this.panelOpen.set(open);
+    try {
+      localStorage.setItem(PANEL_KEY, open ? '1' : '0');
+    } catch {
+      // storage non disponibile: la scelta vale per questa sessione
+    }
   }
 
   private async open(id: string): Promise<void> {
