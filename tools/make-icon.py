@@ -32,3 +32,7 @@ for n in (72, 96, 128, 144, 152, 192, 384, 512):
     big.resize((n, n), Image.LANCZOS).save(f"{out}/web/public/icons/icon-{n}x{n}.png")
 big.resize((256, 256), Image.LANCZOS).save(
     f"{out}/web/public/favicon.ico", sizes=[(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
+
+# icone di piattaforma pregenerate: evitano l'icon-tool di electron-builder (crash su Windows CI)
+big.resize((1024, 1024), Image.LANCZOS).save(f"{out}/build/icon.ico", sizes=[(16, 16), (24, 24), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)])
+big.resize((1024, 1024), Image.LANCZOS).save(f"{out}/build/icon.icns")

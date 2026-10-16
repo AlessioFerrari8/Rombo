@@ -12,7 +12,7 @@ asar: true
 artifactName: ${productName}-${version}-${os}-${arch}.${ext}
 
 # doppio clic su un .rombo apre Rombo (stesso JSON dell'export "File diagramma").
-# Niente `icon`: senza build/rombo.ico|.icns win e mac usano l'icona dell'app (da build/icon.png);
+# Icone .ico/.icns pregenerate (tools/make-icon.py): l'icon-tool di electron-builder crashava su Windows (exit 3221225477).
 # il mimeType finisce da solo nel MimeType del .desktop su linux.
 fileAssociations:
   - ext: rombo
@@ -22,7 +22,7 @@ fileAssociations:
     role: Editor
 
 win:
-  icon: build/icon.png
+  icon: build/icon.ico
   target:
     - { target: nsis, arch: [x64] }
     - { target: msi, arch: [x64] }
@@ -45,7 +45,7 @@ linux:
     - { target: deb, arch: [x64] }
 
 mac:
-  icon: build/icon.png
+  icon: build/icon.icns
   category: public.app-category.developer-tools
   target:
     - { target: dmg, arch: [x64, arm64] }
