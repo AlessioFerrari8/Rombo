@@ -20,7 +20,7 @@ nello stesso file `.rombo`; i pannelli «Schema logico» e «SQL» e il menu Esp
 | Sistema | File |
 |---|---|
 | Windows | `Rombo-<v>-win-x64.exe` (installer) o `.msi` |
-| Linux | `Rombo-<v>-linux-x86_64.AppImage` (`chmod +x`, poi doppio clic) o `.deb` (`sudo apt install ./Rombo-*.deb`) |
+| Linux | `Rombo-<v>-x86_64.AppImage` (`chmod +x`, poi doppio clic) o `.deb` (`sudo apt install ./Rombo-*.deb`) |
 | macOS | `Rombo-<v>-mac-arm64.dmg` (Apple Silicon) o `-x64.dmg` (Intel) |
 
 Gli installer **non sono firmati**:
@@ -38,7 +38,7 @@ sono nascosti, mancano proprio dal programma. Non controlla gli aggiornamenti (n
 a sorpresa durante la prova).
 
 - **Scaricare**: dalle release con tag `light-vX.Y.Z` (titolo «Rombo Light …»), file
-  `Rombo-Light-<v>-win-x64.exe` / `.msi`, `Rombo-Light-<v>-linux-x86_64.AppImage` / `.deb`,
+  `Rombo-Light-<v>-win-x64.exe` / `.msi`, `Rombo-Light-<v>-x86_64.AppImage` / `.deb`,
   `Rombo-Light-<v>-mac-arm64.dmg` / `-x64.dmg`.
 - **Accanto alla completa**: nome, identificativo (`it.alessio.rombo.light`) e cartella dei dati sono suoi, quindi
   si installano tutte e due; i diagrammi salvati dentro l'app restano separati.

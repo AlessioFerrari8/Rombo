@@ -44,6 +44,9 @@ linux:
     - { target: AppImage, arch: [x64] }
     - { target: deb, arch: [x64] }
 
+appImage:
+  artifactName: ${productName}-${version}-${arch}.${ext}
+
 mac:
   icon: build/icon.icns
   category: public.app-category.developer-tools

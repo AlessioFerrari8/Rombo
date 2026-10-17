@@ -55,6 +55,9 @@ linux:
     - { target: AppImage, arch: [x64] }
     - { target: deb, arch: [x64] }
 
+appImage:
+  artifactName: Rombo-Light-${version}-${arch}.${ext}
+
 mac:
   icon: build/icon.icns
   category: public.app-category.developer-tools
