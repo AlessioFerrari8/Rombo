@@ -37,7 +37,11 @@ test("il logico e l'SQL entrano nell'app solo dai due confini sostituiti nella b
   const logical = /(domain\/(logical[\w-]*|ddl|validate-logical|sql-type)|editor\/(logical-[\w-]+|sql-panel|regenerate-dialog|type-picker)(\/[\w-]+)?)$/;
   const rel = (f) => path.relative(app, f).replace(/\\/g, '/').replace(/\.ts$/, '');
   const isLogical = (r) => logical.test(r) || r.startsWith('domain/fixtures/');
-  const boundaries = new Set(['edition/logical-domain', 'edition/logical-ui', 'edition/logical-domain.light', 'edition/logical-ui.light']);
+  // I due confini + le schede di testo di Rombo Light, che ricavano il modello dall'ER (solo toLogical, niente SQL ne' editor).
+  const boundaries = new Set([
+    'edition/logical-domain', 'edition/logical-ui', 'edition/logical-domain.light', 'edition/logical-ui.light',
+    'domain/doc-text', 'editor/light-text/light-text',
+  ]);
   const offenders = [];
   for (const f of walk(app)) {
     const from = rel(f);
