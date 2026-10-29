@@ -21,7 +21,7 @@ import { computeLayout } from './layout';
 
 export type Tool = 'select' | 'entity' | 'relationship' | 'attribute' | 'isa' | 'table';
 export type Mode = 'er' | 'logical';
-export type PanelTab = 'props' | 'problems' | 'logical' | 'sql';
+export type PanelTab = 'props' | 'problems' | 'logical' | 'sql' | 'model' | 'analysis';
 export type SaveState = 'saved' | 'saving' | 'error';
 
 @Injectable()

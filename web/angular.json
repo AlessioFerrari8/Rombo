@@ -84,6 +84,10 @@
                 {
                   "replace": "src/app/edition/logical-ui.ts",
                   "with": "src/app/edition/logical-ui.light.ts"
+                },
+                {
+                  "replace": "src/app/edition/light-ui.ts",
+                  "with": "src/app/edition/light-ui.light.ts"
                 }
               ]
             }

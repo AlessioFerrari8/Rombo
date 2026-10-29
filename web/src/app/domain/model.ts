@@ -102,7 +102,13 @@ export interface Diagram {
   generalizations: Generalization[];
   /** Schema logico modificabile a mano; assente nei diagrammi che non l'hanno mai generato. */
   logical?: LogicalDiagram;
+  /** Testi scritti a mano (Rombo Light): modello logico in notazione testuale e analisi del problema. */
+  docs?: Docs;
 }
+
+export interface Docs { logical?: string; analysis?: string }
+export const DOCS_LOGICAL_MAX = 20000;
+export const DOCS_ANALYSIS_MAX = 60000;
 
 export type Owner = Entity | Relationship;
 export type ElementKind = 'entity' | 'relationship' | 'attribute' | 'part' | 'generalization';

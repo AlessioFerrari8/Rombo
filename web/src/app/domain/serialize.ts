@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { describeIssue, erdrawerSchema, fromErdrawer, isErdrawer } from './erdrawer';
 import { newId } from './ids';
-import { Diagram } from './model';
+import { DOCS_ANALYSIS_MAX, DOCS_LOGICAL_MAX, Diagram } from './model';
 
 // Limiti dello schema ER: da questi derivano quelli dello schema logico, che generateLogical deve poter rispettare.
 const ER_NAME_MAX = 80;
@@ -66,6 +66,7 @@ export const diagramSchema = z.object({
   entities: z.array(entity).max(ER_ENTITIES_MAX), relationships: z.array(relationship).max(ER_RELATIONSHIPS_MAX),
   generalizations: z.array(generalization).max(ER_GENERALIZATIONS_MAX),
   logical: z.object({ tables: z.array(ltable).max(LOGICAL_TABLES_MAX) }).optional(),
+  docs: z.object({ logical: z.string().max(DOCS_LOGICAL_MAX).optional(), analysis: z.string().max(DOCS_ANALYSIS_MAX).optional() }).optional(),
 });
 
 export type ParseResult =
